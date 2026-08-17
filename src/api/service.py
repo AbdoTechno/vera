@@ -348,21 +348,30 @@ class VERAClinicalService:
         doc_count = len(self.document_registry) + 1
         doc_id = f"DOC_{doc_count:03d}"
         
-        # 1. Parse PDF
+        # 1. Parse PDF pages
         loader = PDFLoader()
-        doc_data = loader.load(file_path, doc_id=doc_id, category=category)
+        pages = loader.load_pdf(
+            pdf_path=file_path,
+            doc_metadata={
+                "doc_id": doc_id,
+                "category": category,
+                "title": original_filename,
+                "doc_name": original_filename
+            }
+        )
+        total_pages = len(pages) if pages else 1
         
-        # 2. Chunk document
+        # 2. Chunk document pages
         chunker = MedicalChunker(
             chunk_size=CONFIG.ingestion.chunk_size,
             chunk_overlap=CONFIG.ingestion.chunk_overlap
         )
-        chunks = chunker.chunk_document(doc_data)
+        chunks = chunker.chunk_pages(pages)
         
         # 3. Add to ChromaDB vector store
-        self.vector_store.add_chunks(chunks)
+        self.vector_store.index_chunks(chunks)
         
-        # 4. Add to in-memory catalog
+        # 4. Add to in-memory catalog and re-initialize BM25
         raw_chunks_dicts = [
             {
                 "chunk_id": c.chunk_id,
@@ -383,20 +392,34 @@ class VERAClinicalService:
         reg_entry = {
             "doc_id": doc_id,
             "filename": original_filename,
-            "title": doc_data.get("title", original_filename),
+            "title": original_filename.replace(".pdf", ""),
             "source": "Uploaded Institutional Guideline",
             "published_year": "2026",
             "category": category,
-            "total_pages": doc_data.get("total_pages", 1)
+            "total_pages": total_pages
         }
         self.document_registry.append(reg_entry)
+
+        # 6. Persist catalog & registry to disk
+        try:
+            catalog_path = Path("./data/processed/chunk_catalog.json")
+            catalog_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(catalog_path, "w", encoding="utf-8") as f:
+                json.dump(self.chunk_catalog, f, indent=2, ensure_ascii=False)
+            
+            registry_path = Path("./data/processed/document_registry.json")
+            registry_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(registry_path, "w", encoding="utf-8") as f:
+                json.dump(self.document_registry, f, indent=2, ensure_ascii=False)
+        except Exception as e:
+            logger.warning(f"Could not persist updated registry/catalog to disk: {e}")
 
         return UploadResponse(
             status="success",
             message=f"Guideline '{original_filename}' successfully indexed with {len(chunks)} searchable vectors.",
             filename=original_filename,
             doc_id=doc_id,
-            pages_processed=doc_data.get("total_pages", 1),
+            pages_processed=total_pages,
             chunks_indexed=len(chunks),
             doclink=f"{original_filename}#page=1"
         )
