@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 import pypdf
+from fastapi import HTTPException
 
 from src.config import CONFIG
 from src.embeddings.vector_store import VectorStoreManager
@@ -126,8 +127,19 @@ class VERAClinicalService:
         elif is_valid_key_format(api_key_header):
             custom_key = api_key_header.strip()
 
-        effective_key = custom_key or os.getenv("GEMINI_API_KEY") or DEFAULT_SYSTEM_GEMINI_KEY
+        # Strict BYOK: The key MUST come from the mobile/web app request
+        effective_key = custom_key
         provider = request.provider.lower() if request.provider else "gemini"
+
+        if not effective_key:
+            logger.warning("Rejected clinical query: Missing Gemini API Key from client request.")
+            raise HTTPException(
+                status_code=401,
+                detail=(
+                    "يرجى إدخال مفتاح Gemini API Key في إعدادات التطبيق للمتابعة. "
+                    "(Gemini API Key is required. Please enter your API Key in Settings to continue.)"
+                )
+            )
 
         # 2. Step 1: Query Analysis & Classification
         classification = self._classify_query_intent(request.query)
@@ -199,24 +211,27 @@ class VERAClinicalService:
             except Exception as e:
                 logger.warning(f"Error configuring gemini client: {e}")
 
-        
-        # Explicitly configure client with effective key
-        if provider == "gemini" and effective_key:
-            try:
-                import google.generativeai as genai_legacy
-                genai_legacy.configure(api_key=effective_key)
-                generator.client = genai_legacy
-            except Exception as e:
-                logger.warning(f"Error configuring gemini client: {e}")
-
-
         # Inject physician context in prompt if available
         custom_query = request.query
         if request.doctor_context and request.doctor_context.notes:
             custom_query = f"{request.query} (Physician Context: Specialty: {request.doctor_context.specialty}, Focus: {request.doctor_context.notes})"
 
-        gen_output = generator.generate_response(custom_query, retrieved_chunks, language=lang)
-        raw_answer = gen_output.get("answer", "")
+        try:
+            gen_output = generator.generate_response(custom_query, retrieved_chunks, language=lang)
+            raw_answer = gen_output.get("answer", "")
+        except Exception as e:
+            err_str = str(e)
+            if any(k in err_str.lower() for k in ["api_key_invalid", "api key not valid", "permission_denied", "invalid api key"]):
+                logger.error(f"Invalid API Key rejected by provider: {err_str}")
+                raise HTTPException(
+                    status_code=401,
+                    detail=(
+                        "مفتاح Gemini API Key المدخل غير صالح أو منتهي الصلاحية. يرجى التحقق من المفتاح في إعدادات التطبيق. "
+                        "(The provided Gemini API Key is invalid or expired. Please check your key in settings.)"
+                    )
+                )
+            logger.error(f"Generation synthesis failed: {err_str}")
+            raise HTTPException(status_code=500, detail=f"LLM Generation Error: {err_str}")
         
         # Verify faithfulness
         faith_res = self.hallucination_checker.verify_faithfulness(raw_answer, retrieved_chunks)

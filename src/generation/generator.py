@@ -103,27 +103,12 @@ class ClinicalGenerator:
                         break
                 except Exception as e:
                     logger.warning(f"Attempt with Gemini model '{mod}' failed: {e}")
-                    # If invalid key, attempt recovery with default key
-                    if "API_KEY_INVALID" in str(e) or "API key not valid" in str(e):
-                        default_fallback_key = os.getenv("GEMINI_API_KEY", "")
-                        if default_fallback_key:
-                            try:
-                                self.client.configure(api_key=default_fallback_key)
-                                m = self.client.GenerativeModel(model_name="models/gemini-3.1-flash-lite")
-                                resp = m.generate_content(full_prompt)
-                                if resp and resp.text:
-                                    response_text = resp.text
-                                    generated_success = True
-                                    logger.info("Recovered Gemini generation using system fallback key.")
-                                    break
-                            except Exception as recovery_err:
-                                logger.error(f"Fallback recovery error: {recovery_err}")
-
+                    if any(k in str(e).lower() for k in ["api_key_invalid", "api key not valid", "permission_denied", "invalid api key"]):
+                        raise ValueError(f"Invalid or expired Gemini API Key: {e}")
                     continue
 
             if not generated_success:
-                logger.error("All Gemini API models failed, using deterministic fallback synthesis.")
-                response_text = self._mock_fallback_synthesis(query, retrieved_chunks, language=language)
+                raise RuntimeError("Failed to generate clinical response with Gemini. Please verify your API key and quotas.")
 
         # Call OpenAI API
         elif self.provider == "openai" and self.client:

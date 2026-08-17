@@ -1,0 +1,103 @@
+[
+  {
+    "doc_id": "DOC_001",
+    "filename": "GenomeResearch_2024_LongRead_Chromosomal_Rearrangements.pdf",
+    "title": "A National Long-Read Sequencing Study on Chromosomal Rearrangements Uncovers Hidden Complexities",
+    "authors": "Jesper Eisfeldt, Adam Ameur, Felix Lenner, Esmee Ten Berk de Boer, Marlene Ek, Josephine Wincent, et al.",
+    "source": "Genome Research (Cold Spring Harbor Laboratory Press)",
+    "doi": "10.1101/gr.279510.124",
+    "published_year": "2024",
+    "category": "Genetics Research / Clinical Cytogenetics",
+    "access_level": "Public Open Access",
+    "language": "en",
+    "tags": [
+      "Chromosomal_Rearrangements",
+      "Long_Read_Sequencing",
+      "Structural_Variants",
+      "Optical_Genome_Mapping",
+      "HiFi_Sequencing",
+      "Oxford_Nanopore",
+      "Clinical_Cytogenetics"
+    ]
+  },
+  {
+    "doc_id": "DOC_002",
+    "filename": "medRxiv_2024_SMA_Missed_Diagnoses_Sequencing.pdf",
+    "title": "Detecting Missed Diagnoses of Spinal Muscular Atrophy in Genome, Exome, and Panel Sequencing Datasets",
+    "authors": "Ben Weisburd, Rakshya Sharma, Villem Pata, Tiia Reimand, Vijay S. Ganesh, et al.",
+    "source": "medRxiv Preprint (Cold Spring Harbor Laboratory)",
+    "doi": "10.1101/2024.02.11.24302646",
+    "published_year": "2024",
+    "category": "Medical Genetics / Clinical Diagnostics",
+    "access_level": "Public Open Access Preprint",
+    "language": "en",
+    "tags": [
+      "Spinal_Muscular_Atrophy",
+      "SMA",
+      "SMN1",
+      "SMN2",
+      "Exome_Sequencing",
+      "Genome_Sequencing",
+      "Missed_Diagnoses"
+    ]
+  },
+  {
+    "doc_id": "DOC_003",
+    "filename": "ClinPediatr_2023_SMA_Treatment_Best_Practices.pdf",
+    "title": "Spinal Muscular Atrophy: Update in Best Practices Recommendations for Treatment Considerations",
+    "authors": "Mary K. Schroth, Jennifer Deans, Diana X. Bharucha Goebel, W. Bryan Burnette, Basil T. Darras, et al.",
+    "source": "Clinical Pediatrics (CPJ) / SAGE Publications",
+    "doi": "10.1177/00099228231200649",
+    "published_year": "2023",
+    "category": "Pediatric Neurology / Clinical Practice & Treatment Guidelines",
+    "access_level": "Public Open Access",
+    "language": "en",
+    "tags": [
+      "Spinal_Muscular_Atrophy",
+      "SMA_Treatment",
+      "Nusinersen",
+      "Onasemnogene_Abeparvovec",
+      "Risdiplam",
+      "Clinical_Guidelines",
+      "Best_Practices"
+    ]
+  },
+  {
+    "doc_id": "DOC_004",
+    "filename": "IJMS_2023_SMA_Past_Present_Future_Review.pdf",
+    "title": "Spinal Muscular Atrophy: The Past, Present, and Future of Diagnosis and Treatment",
+    "authors": "Hisahide Nishio, Emma Tabe Eko Niba, Toshio Saito, Kentaro Okamoto, Yasuhiro Takeshima, Hiroyuki Awano",
+    "source": "International Journal of Molecular Sciences (IJMS / MDPI)",
+    "doi": "10.3390/ijms241511939",
+    "published_year": "2023",
+    "category": "Molecular Medicine / Comprehensive Review",
+    "access_level": "Public Open Access",
+    "language": "en",
+    "tags": [
+      "Spinal_Muscular_Atrophy",
+      "SMN_Protein",
+      "Gene_Therapy",
+      "Antisense_Oligonucleotides",
+      "Small_Molecules",
+      "Newborn_Screening"
+    ]
+  },
+  {
+    "doc_id": "DOC_005",
+    "filename": "NICE Hypertension in adults diagnosis and management.pdf",
+    "title": "NICE Hypertension in adults diagnosis and management",
+    "source": "Uploaded Institutional Guideline",
+    "published_year": "2026",
+    "category": "Spinal Muscular Atrophy",
+    "total_pages": 52
+  },
+  {
+    "doc_id": "DOC_006",
+    "filename": "NICE Hypertension in adults diagnosis and management.pdf",
+    "title": "NICE Hypertension in adults diagnosis and management",
+    "source": "Uploaded Institutional Guideline",
+    "published_year": "2026",
+    "category": "Spinal Muscular Atrophy",
+    "total_pages": 52
+  }
+]

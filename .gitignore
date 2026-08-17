@@ -26,13 +26,7 @@ ENV/
 env.bak/
 venv.bak/
 
-# 4. Vector Database & Processed Clinical Indexes
-data/vector_db/
-data/vector_db/*
-data/processed/chunk_catalog.json
-data/processed/document_registry.json
-
-# 5. Logs & System Runtime Artifacts
+# 4. Logs & System Runtime Artifacts
 *.log
 logs/
 .system_generated/

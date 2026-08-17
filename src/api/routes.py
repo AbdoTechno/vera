@@ -36,6 +36,8 @@ async def clinical_chat(
     try:
         response = service.process_clinical_query(request, api_key_header=api_key_header)
         return response
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Clinical Pipeline Error: {str(e)}")
 

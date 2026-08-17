@@ -56,6 +56,12 @@ seaborn>=0.13.0
 pandas>=2.2.0
 numpy>=1.26.0
 
+# Web Framework & API Server
+fastapi>=0.111.0
+uvicorn[standard]>=0.30.0
+python-multipart>=0.0.9
+loguru>=0.7.2
+
 # Web UI & Testing
 streamlit>=1.35.0
 pytest>=8.2.0
