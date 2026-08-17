@@ -1,208 +1,288 @@
-# 🩺 VERA — Verified Evidence Retrieval Assistant
-### Evidence-Grounded Clinical Decision Support (CDS) System
+# VERA - Verified Evidence Retrieval Assistant
+### Evidence-Grounded Clinical Decision Support Platform
 
-[![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://python.org)
-[![Architecture: 4-Layer CDS](https://img.shields.io/badge/Architecture-4--Layer%20CDS-emerald.svg)]()
-[![Hackathon Evaluation Ready](https://img.shields.io/badge/Evaluation-100%25%20Rubric%20Aligned-purple.svg)]()
-[![Clinical Safety First](https://img.shields.io/badge/Clinical%20Safety-Grounded%20Citations-crimson.svg)]()
+VERA is an evidence-grounded Clinical Decision Support (CDS) Retrieval-Augmented Generation (RAG) platform designed for physicians, geneticists, and clinical researchers.
 
-> **المبدأ الأساسي**: *الإجابة الفصيحة لا تعني بالضرورة إجابة آمنة (Fluent Answer ≠ Safe Answer)*  
-> نظام ذكاء اصطناعي لدعم القرار السريري مستند حصرياً إلى الإرشادات الطبية المعتمدة ومزود بالاستشهادات الدقيقة `[اسم المستند | القسم | رقم الصفحة]`.
+The system synthesizes clinical recommendations strictly from peer-reviewed medical guidelines and genomic literature with transparent in-line citations (`[Document Name | Page Number]`), verifiable safety guardrails, and dynamic BYOK (Bring Your Own Key) LLM integration.
 
 ---
 
-## ⚡ التشغيل السريع لخادم الـ API (FastAPI Quickstart)
+## Key Features
 
-لتشغيل السيرفر محلياً وربطه بتطبيق Flutter أو تجربة الـ Endpoints:
+- **Strict Evidence Grounding**: Enforces factual grounding against verified clinical literature, preventing ungrounded claims and hallucinations.
+- **Hybrid Retrieval**: Combines semantic dense vector search (ChromaDB + SentenceTransformers) with lexical BM25 retrieval and Reciprocal Rank Fusion (RRF).
+- **Safety Confidence Gating**: Automatically verifies retrieval quality prior to generation and blocks out-of-scope or unverified inquiries.
+- **Transparent Citations**: Every clinical point links directly to its source document and exact page number (`[Document.pdf#page=X]`).
+- **Dynamic BYOK Integration**: Supports dynamic LLM API key injection per request (Google Gemini / OpenAI), with automatic fallback to system defaults.
+- **Dynamic Guideline Ingestion**: Enables on-the-fly parsing, chunking, and embedding of newly uploaded institutional medical PDFs.
+- **Production-Ready FastAPI Backend**: High-performance asynchronous API designed for direct integration with mobile (Flutter) and web clients.
 
-```powershell
-# تشغيل السيرفر بأمر واحد
+---
+
+## Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ 1. INGESTION & INDEXING LAYER                               │
+│    - PDF Parsing (pypdf)                                    │
+│    - Section-Aware Medical Chunking (500 tokens / 100 ov.)  │
+│    - Dense Embeddings (BAAI/bge-small-en-v1.5) + BM25 Index │
+└──────────────────────────────┬──────────────────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 2. HYBRID RETRIEVAL LAYER                                   │
+│    - Clinical Query Analysis & Intent Extraction            │
+│    - Dense Vector Search (ChromaDB) + Lexical BM25 Search   │
+│    - Reciprocal Rank Fusion (RRF) & Top-K Extraction        │
+└──────────────────────────────┬──────────────────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 3. SAFETY CONFIDENCE GATE                                   │
+│    - Similarity Threshold Check (Min Score >= 0.60)         │
+│    - Ambiguity / Out-of-Scope Detection                     │
+└──────────────────────────────┬──────────────────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 4. GROUNDED SYNTHESIS & AUDIT LAYER                         │
+│    - LLM Generation (Gemini 3.1 Flash Lite / OpenAI)        │
+│    - In-line Citation Extraction & Verification             │
+│    - Post-Generation Hallucination & Faithfulness Audit     │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+- Python 3.10 or higher
+- Git
+
+### Installation
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/AbdoTechno/vera.git
+   cd vera
+   ```
+
+2. **Create and activate a virtual environment:**
+   ```bash
+   python -m venv venv
+   # On Windows:
+   .\venv\Scripts\activate
+   # On Linux/macOS:
+   source venv/bin/activate
+   ```
+
+3. **Install dependencies:**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Configure environment variables:**
+   ```bash
+   cp .env.example .env
+   ```
+   Edit `.env` to configure your API keys and parameters:
+   ```ini
+   GEMINI_API_KEY=your_gemini_api_key_here
+   DEFAULT_LLM_PROVIDER=gemini
+   DEFAULT_LLM_MODEL=models/gemini-3.1-flash-lite
+   CONFIDENCE_THRESHOLD=0.60
+   ```
+
+---
+
+## Running the Server
+
+Start the FastAPI application using the runner script or Uvicorn:
+
+```bash
+# Option 1: Using the runner script
 python run_server.py
 
-# أو عبر uvicorn مباشرة
+# Option 2: Using Uvicorn directly
 uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-- 📖 **التوثيق التفاعلي للـ API (Swagger Docs):** [http://localhost:8000/docs](http://localhost:8000/docs)
-- 🩺 **فحص حالة السيرفر (Health Check):** [http://localhost:8000/api/v1/health](http://localhost:8000/api/v1/health)
-- 📄 **عرض ملفات الـ PDF المرجعية:** [http://localhost:8000/pdfs](http://localhost:8000/pdfs)
+Once running:
+- **Interactive API Documentation (Swagger UI):** [http://localhost:8000/docs](http://localhost:8000/docs)
+- **Alternative Documentation (ReDoc):** [http://localhost:8000/redoc](http://localhost:8000/redoc)
+- **Health Check Endpoint:** [http://localhost:8000/api/v1/health](http://localhost:8000/api/v1/health)
+- **Static PDF Guideline Viewer:** [http://localhost:8000/pdfs](http://localhost:8000/pdfs)
 
 ---
 
-## 📑 الفهرس (Table of Contents)
-1. [التشغيل السريع لخادم الـ API (FastAPI Quickstart)](#-التشغيل-السريع-لخادم-ال-api-fastapi-quickstart)
-2. [دليل نقاط الـ API والربط مع Flutter (API & Mobile Integration)](#-دليل-نقاط-ال-api-والربط-مع-flutter)
-3. [خارطة طريق المذاكرة (Study Checklist)](file:///d:/AI%20Hackathon/New%20data/STUDY_GUIDE_CHECKLIST.md)
-4. [الدليل التعليمي الشامل (System & Run Guide)](file:///d:/AI%20Hackathon/New%20data/HOW_TO_RUN_AND_SYSTEM_GUIDE.md)
-5. [الهيكل العام للمشروع (Project Structure)](#-الهيكل-العام-للمشروع-project-structure)
-6. [الطبقات المعمارية الأربع (The 4-Layer Architecture)](#-الطبقات-المعمارية-الأربع-the-4-layer-architecture)
-7. [مفكرات التجارب اليومية (Day 1 - Day 5 Notebooks)](#-مفكرات-التجارب-اليومية-day-1---day-5-notebooks)
-8. [كيفية التثبيت والتشغيل (Installation & Quickstart)](#-كيفية-التثبيت-والتشغيل-installation--quickstart)
+## API Reference
 
+### 1. Clinical Chat & RAG Simulation
+`POST /api/v1/chat`
 
----
+Processes a physician's inquiry, executes the 4-step RAG pipeline, and returns structured clinical recommendations with verified citations and confidence scoring.
 
-## 🗂️ الهيكل العام للمشروع (Project Structure)
+**Headers (Optional - BYOK):**
+- `X-Gemini-API-Key`: Physician's custom Gemini API key.
+- `X-OpenAI-API-Key`: Physician's custom OpenAI API key.
 
-```text
-d:/AI Hackathon/New data/
-├── config/                          # إعدادات النظام ومعاملات النموذج
-│   ├── config.yaml                  # الإعدادات المركزية (Chunk size, Top-K, thresholds)
-│   └── README.md                    # دليل وحدة الإعدادات
-│
-├── data/                            # إدارة دورة حياة البيانات
-│   ├── raw_pdfs/                    # ملفات الـ PDF الطبية الرسمية
-│   ├── processed/                   # المقاطع النصية المهيكلة (chunk_catalog.json)
-│   ├── knowledge_base/              # قاعدة المعرفة الشاملة (Markdown)
-│   ├── vector_db/                   # قاعدة البيانات الشعاعية الدائمة (ChromaDB)
-│   └── README.md                    # دليل إدارة البيانات
-│
-├── src/                             # الكود البرمجي للمنظومة
-│   ├── ingestion/                   # الطبقة 1: قراءة الـ PDF والتقطيع الواعي بالأقسام
-│   ├── embeddings/                  # بناء المتجهات والفهرسة الشعاعية
-│   ├── retrieval/                   # الطبقة 2: البحث الدلالي والهجين وتوسيع الاستعلامات
-│   ├── generation/                  # الطبقة 3: التوليد المنضبط بالأدلة وصياغة الاقتباسات
-│   ├── safety/                      # الطبقة 4: بوابات الأمان، كشف الهلوسة، ومحرك الرفض
-│   ├── evaluation/                  # مقاييس التقييم المعيارية (Precision@K, Faithfulness)
-│   ├── utils/                       # دوال المساعدة، السجلات، وتنسيق المخرجات
-│   └── README.md                    # دليل الكود البرمجي
-│
-├── notebooks/                       # مفكرات التجارب التفاعلية اليومية (Day 1 to 5)
-│   ├── 01_ingestion_and_chunking.ipynb         # Day 1: استخراج النصوص والتقطيع
-│   ├── 02_embeddings_and_indexing.ipynb        # Day 1-2: بناء الفهرس الشعاعي
-│   ├── 03_retrieval_optimization.ipynb         # Day 2: تحسين الاسترجاع والبحث الهجين
-│   ├── 04_grounded_generation_citations.ipynb  # Day 3: التوليد المنضبط والاقتباسات
-│   ├── 05_safety_guardrails_evaluation.ipynb   # Day 4: حواجز الأمان والتقييم المعياري
-│   ├── 06_end_to_end_demo_day5.ipynb           # Day 5: العرض النهائي التفاعلي للمحكمين
-│   └── README.md                               # دليل المفكرات التفاعلية
-│
-├── eval_datasets/                   # مجموعات بيانات الاختبار والتقييم
-│   ├── in_scope_test_queries.json              # استعلامات ضمن النطاق
-│   ├── out_of_scope_test_queries.json          # استعلامات خارج النطاق (لاختبار الرفض)
-│   ├── ambiguous_adversarial_queries.json      # حالات طوارئ وأسئلة مضللة
-│   ├── gold_ground_truth_qa.json               # الأسئلة الذهبية مع إجابات واقتباسات مرجعية
-│   └── README.md                               # دليل مجموعات التقييم
-│
-├── tests/                           # الاختبارات البرمجية المؤتمتة (Pytest)
-│   ├── test_ingestion.py
-│   ├── test_retrieval.py
-│   ├── test_generation.py
-│   ├── test_safety.py
-│   └── README.md
-│
-├── docs/                            # التوثيق والمخططات المعمارية
-│   ├── architecture_diagrams.md     # مخططات Mermaid للهيكل والتدفق
-│   ├── judging_rubric_alignment.md  # جدول المطابقة مع معايير الـ 100 درجة
-│   ├── clinical_guideline_summary.md # ملخص الأوراق الطبية المعتمدة
-│   └── README.md
-│
-├── requirements.txt                 # الحزم والمكتبات المطلوبة
-├── .env.example                     # نموذج المفاتيح والمتغيرات البيئية
-└── VERA_PROJECT_README.md           # الدليل المرجعي الشامل للهاكاثون
-```
-
----
-
-## 🏛️ الطبقات المعمارية الأربع (The 4-Layer Architecture)
-
-```mermaid
-graph LR
-    L1["1. Document Ingestion<br/>(PDF Parsing & Section Chunking)"] --> L2["2. Evidence Retrieval<br/>(Hybrid Search & Top-K)"]
-    L2 --> L4_Gate["4. Safety Confidence Gate<br/>(Similarity >= 0.60)"]
-    L4_Gate --> L3["3. Grounded Generation<br/>(Strict Prompt + Exact Citations)"]
-    L3 --> L4_Post["4. Post-Safety Audit<br/>(Hallucination & Citation Check)"]
-```
-
-1. **Document Ingestion Layer**: قراءة الـ PDF، التقطيع الواعي بالعناوين والأقسام، وحفظ أرقام الصفحات بدقة.
-2. **Retrieval Layer**: استرجاع هجين يجمع بين البحث الدلالي وبحث الكلمات المفتاحية الطبية (BM25) مع دمج الرتب (RRF).
-3. **Generation Layer**: توليد سريري منضبط حصرياً بالأدلة مع ترقيم استشهادي `[Document | Section | Page]`.
-4. **Safety Layer**: بوابة ثقة الاسترجاع، محرك رفض الاستعلامات الطارئة والخارجة عن النطاق، ومدقق الهلوسة.
-
----
-
-## 🚀 مفكرات التجارب اليومية (Day 1 - Day 5 Notebooks)
-
-تم إعداد 6 مفكرات تفاعلية جاهزة للتشغيل المباشر داخل مجلد `notebooks/`:
-
-| المفكرة | اليوم | ما الذي ستقوم بتجربته؟ |
-| :--- | :--- | :--- |
-| [`01_ingestion_and_chunking.ipynb`](file:///d:/AI%20Hackathon/New%20data/notebooks/01_ingestion_and_chunking.ipynb) | Day 1 | تجربة قراءة ملفات الـ PDF واستخراج الجداول وتقطيع النصوص بناءً على الأقسام. |
-| [`02_embeddings_and_indexing.ipynb`](file:///d:/AI%20Hackathon/New%20data/notebooks/02_embeddings_and_indexing.ipynb) | Day 1–2 | بناء المتجهات الشعاعية وفهرستها في ChromaDB وتجربة الاستعلامات البسيطة. |
-| [`03_retrieval_optimization.ipynb`](file:///d:/AI%20Hackathon/New%20data/notebooks/03_retrieval_optimization.ipynb) | Day 2 | مقارنة البحث الدلالي والبحث الهجين (BM25 + Dense) وتوسيع المصطلحات الطبية. |
-| [`04_grounded_generation_citations.ipynb`](file:///d:/AI%20Hackathon/New%20data/notebooks/04_grounded_generation_citations.ipynb) | Day 3 | توليد التوصيات السريرية واستخراج وتدقيق الاستشهادات `[Doc|Sec|Page]`. |
-| [`05_safety_guardrails_evaluation.ipynb`](file:///d:/AI%20Hackathon/New%20data/notebooks/05_safety_guardrails_evaluation.ipynb) | Day 4 | اختبار الرفض الآمن، بوابات الثقة، وتشغيل تقييم `Precision@K` و `Faithfulness`. |
-| [`06_end_to_end_demo_day5.ipynb`](file:///d:/AI%20Hackathon/New%20data/notebooks/06_end_to_end_demo_day5.ipynb) | Day 5 | المنصة التفاعلية المباشرة للعرض أمام لجنة التحكيم لجميع الحالات. |
-
----
-
-## 🌐 دليل نقاط الـ API والربط مع Flutter
-
-### 1. الاستعلام السريري ومحاكاة الـ RAG (`POST /api/v1/chat`)
-- **Headers:** `X-Gemini-API-Key` أو `X-OpenAI-API-Key` (مفتاح الطبيب الخاص من التطبيق)
-- **Request Body:**
+**Request Body:**
 ```json
 {
-  "query": "ما هي معايير بدء علاج النوسينيرسين في مرضى ضمور العضلات الشوكي SMA؟",
-  "language": "ar",
+  "query": "What are the initiation criteria and dosing considerations for Nusinersen in SMA patients?",
+  "language": "en",
   "doctor_context": {
-    "name": "د. سارة",
-    "specialty": "طب أعصاب الأطفال",
-    "notes": "التركيز على بروتوكولات التدخل المبكر"
+    "name": "Dr. Sarah",
+    "specialty": "Pediatric Neurology",
+    "notes": "Early intervention assessment"
   }
 }
 ```
-- **Response:** يرجع كائن JSON يحتوي على محاكاة الـ 4 مراحل للـ RAG (تصنيف الاستعلام ⬅️ استرجاع المقاطع والصفحات ⬅️ فحص الأمان وعدم الهلوسة ⬅️ التوليد الطبي مع الاستشهادات الدقيقة `citations`).
+
+**Response:**
+```json
+{
+  "status": "success",
+  "language": "en",
+  "rag_pipeline_simulation": {
+    "step_1_query_analysis": {
+      "original_query": "What are the initiation criteria and dosing considerations for Nusinersen in SMA patients?",
+      "disease_category": "Spinal Muscular Atrophy (SMA) Guidelines",
+      "intent": "Treatment Protocol & Dosing Guidelines",
+      "status": "Completed"
+    },
+    "step_2_retrieval": {
+      "search_type": "Hybrid (Dense Vector + BM25 Lexical)",
+      "retrieved_count": 4,
+      "sources_found": [ ... ]
+    },
+    "step_3_safety_and_verification": {
+      "confidence_score": 0.82,
+      "passed_safety_gate": true,
+      "hallucination_check": "Verified against retrieved clinical guidelines",
+      "status": "Safe & Grounded"
+    },
+    "step_4_synthesis": {
+      "model_used": "Gemini (models/gemini-3.1-flash-lite)",
+      "latency_seconds": 2.15,
+      "status": "Generated"
+    }
+  },
+  "clinical_response": {
+    "confidence_score": 0.82,
+    "confidence_percentage": "82%",
+    "summary": "Nusinersen is an antisense oligonucleotide approved for 5q SMA treatment across pediatric and adult populations...",
+    "detailed_recommendations": [
+      "Administration Route and Schedule: Nusinersen is administered via intrathecal bolus injection [ClinPediatr_2023_SMA_Treatment_Best_Practices.pdf | Page 4].",
+      "Clinical Decision-Making Factors: Evaluation of patient age and SMN2 copy number is required prior to initiation [ClinPediatr_2023_SMA_Treatment_Best_Practices.pdf | Page 1].",
+      "Laboratory Monitoring: Baseline and interval platelet counts, coagulation tests, and spot urine protein must be evaluated before each dose [ClinPediatr_2023_SMA_Treatment_Best_Practices.pdf | Page 4]."
+    ],
+    "citations": [
+      {
+        "citation_id": 1,
+        "source": "ClinPediatr_2023_SMA_Treatment_Best_Practices.pdf",
+        "page": 4,
+        "section": "Dosing & Administration",
+        "doclink": "ClinPediatr_2023_SMA_Treatment_Best_Practices.pdf#page=4"
+      }
+    ],
+    "medical_disclaimer": "VERA is an evidence-grounded research assistant and does not replace autonomous clinical diagnosis or medical practitioner judgment."
+  }
+}
+```
 
 ---
 
-### 2. رفع مستند إرشادي جديد (`POST /api/v1/upload-document`)
-- **Type:** `multipart/form-data`
-- **Fields:** `file` (ملف PDF), `title` (اختياري), `category` (اختياري).
-- تتم الفهرسة الشعاعية التلقائية في ChromaDB فور رفع الملف ليكون متاحاً للبحث فوراً.
+### 2. Upload Institutional Guideline
+`POST /api/v1/upload-document`
+
+Dynamically ingests and indexes a new medical PDF into ChromaDB and the hybrid search catalog.
+
+- **Content-Type:** `multipart/form-data`
+- **Parameters:**
+  - `file`: PDF file (Required).
+  - `title`: Guideline title (Optional).
+  - `category`: Medical category (Optional).
 
 ---
 
-### 3. استعراض التخصصات والأمراض (`GET /api/v1/domains`)
-- يعرض التخصصات النشطة حالياً (SMA و Chromosomal Rearrangements) والتخصصات القادمة قريباً (الأورام، أمراض القلب، والتمثيل الغذائي).
+### 3. Medical Domains Catalog
+`GET /api/v1/domains`
+
+Lists currently active clinical domains (e.g., SMA, Chromosomal Rearrangements) and upcoming research areas.
 
 ---
 
-### 4. استعراض ملفات الـ PDF المرجعية (`GET /api/v1/documents`)
-- يعرض قائمة الأوراق العلمية المفهرسة مع روابطها المباشرة لتشغيلها في قارئ الـ PDF داخل التطبيق عبر `http://localhost:8000/pdfs/<filename>`.
+### 4. Indexed Document Registry
+`GET /api/v1/documents`
+
+Returns all currently indexed medical literature, source metadata, and static PDF download links.
 
 ---
 
-## ⚡ كيفية التثبيت والتشغيل (Quickstart)
+## Project Structure
+
+```text
+vera/
+├── config/                  # Configuration files
+│   ├── config.yaml          # Global pipeline parameters (Chunk size, Top-K, thresholds)
+│   └── README.md
+│
+├── data/                    # Clinical data & storage
+│   ├── raw_pdfs/            # Approved medical literature and PDF guidelines
+│   ├── knowledge_base/      # Structured markdown medical knowledge base
+│   └── README.md
+│
+├── src/                     # Core application source code
+│   ├── api/                 # FastAPI routes, schemas, and pipeline orchestration
+│   │   ├── main.py          # FastAPI application entry point with lifespan pre-warming
+│   │   ├── routes.py        # REST API endpoint definitions
+│   │   ├── schemas.py       # Pydantic data contracts
+│   │   └── service.py       # RAG pipeline orchestration service
+│   ├── ingestion/           # Document ingestion, PDF loading, and section chunking
+│   ├── embeddings/          # Vector store management and dense embeddings
+│   ├── retrieval/           # Hybrid retrieval (ChromaDB + BM25) and query expansion
+│   ├── generation/          # Grounded synthesis, prompt templates, and citation formatting
+│   ├── safety/              # Confidence gating, hallucination checks, and refusal engine
+│   ├── evaluation/          # Retrieval and generation evaluation metrics
+│   └── utils/               # Logging, configuration loader, and helper utilities
+│
+├── notebooks/               # Interactive tutorials and verification notebooks
+│   ├── VERA_All_In_One_Learning_Lab.ipynb  # Self-contained 10-step interactive RAG lab
+│   └── README.md
+│
+├── tests/                   # Automated unit and integration test suite
+│   ├── test_ingestion.py
+│   ├── test_retrieval.py
+│   ├── test_generation.py
+│   └── test_safety.py
+│
+├── requirements.txt         # Project dependencies
+├── .env.example             # Environment variable template
+├── run_server.py            # Local development server runner
+└── README.md                # Project documentation
+```
+
+---
+
+## Testing & Quality Assurance
+
+Run the automated test suite to verify pipeline functionality:
 
 ```bash
-# 1. تثبيت المتطلبات
-pip install -r requirements.txt
-
-# 2. تشغيل سيرفر الـ API لربط تطبيق Flutter
-python run_server.py
-# أو:
-uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
-
-# 3. فتح التوثيق التفاعلي للـ API في المتصفح
-# http://localhost:8000/docs
-
-# 4. تشغيل الاختبارات الآلية للتأكد من سلامة النظام
+# Run all tests
 pytest tests/ -v
-```
 
-
-# 4. فتح المفكرات التفاعلية
-jupyter notebook
+# Run specific component tests
+pytest tests/test_retrieval.py -v
+pytest tests/test_safety.py -v
 ```
 
 ---
 
-## 🏆 معايير التحكيم في الهاكاثون (Judging Rubric - 100 Pts)
+## Medical Disclaimer
 
-- **Retrieval Quality (30 pts)**: مغطاة بالكامل عبر `src/retrieval/` والبحث الهجين والتقطيع الذكي.
-- **Grounding & Citations (25 pts)**: مغطاة بالكامل عبر `src/generation/` وقوالب التوجيه المنضبطة.
-- **System Architecture (15 pts)**: تصميم معماري تركيبي معياري عالي الاحترافية في `src/`.
-- **Evaluation Rigor (15 pts)**: أجنحة اختبار معيارية ومقاييس `Precision@K` و `Faithfulness` في `src/evaluation/`.
-- **Clinical Safety (10 pts)**: صمام أمان متكامل في `src/safety/` وبوابات الثقة والرفض.
-- **UX & Live Demo (5 pts)**: مفكرة عرض تفاعلية `notebooks/06_end_to_end_demo_day5.ipynb` للمحكمين.
-# vera
+VERA is intended exclusively for clinical decision support and research assistance by licensed medical professionals. It is not an autonomous diagnostic system and does not replace professional clinical evaluation, diagnosis, or patient management.
