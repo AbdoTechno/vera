@@ -20,17 +20,26 @@
 
 ---
 
-## 🚀 خطوات التشغيل خطوة بخطوة (Step-by-Step)
+## 🚀 خيارات التشغيل (Choose How to Run)
 
-### الخطوة 1: تشغيل خادم FastAPI
-افتح نافذة Terminal وشغل الخادم:
+### 🌟 الخيار الأول: التشغيل الفوري المباشر (بدون ngrok وبدون أي إعدادات إضافية)
+هذا هو الخيار الأسهل والأسرع للتجربة المحلية على جهازك:
+```powershell
+python run_telegram_bot.py
+```
+> سيقوم السكربت بالاتصال مباشرة بسيرفرات تيليجرام واستقبال وتوليد الإجابات فوراً! يمكنك فتح تيليجرام والتحدث مع **`@veramedicalbot`** في الحال!
+
+---
+
+### 🌐 الخيار الثاني: تشغيل وضع الـ Webhook (للإنتاج أو عبر السيرفر)
+
+#### 1. تشغيل خادم FastAPI
 ```powershell
 python run_server.py
-```
-أو عبر uvicorn مباشرة:
-```powershell
+# أو:
 uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
 ```
+
 > ستظهر لك رسالة: `VERA RAG services pre-warmed and ready for instant queries.` على الرابط `http://localhost:8000`.
 
 ---
