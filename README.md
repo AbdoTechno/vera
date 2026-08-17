@@ -275,7 +275,10 @@ vera/
 
 VERA includes a seamless Telegram Bot integration (`@veramedicalbot`) connected directly to the existing clinical RAG decision-support pipeline.
 
+> Detailed Step-by-Step Guide: See [TELEGRAM_BOT_GUIDE.md](file:///d:/AI%20Hackathon/New%20data/TELEGRAM_BOT_GUIDE.md) for full setup instructions.
+
 ### 1. Environment Configuration
+
 
 Add your Telegram bot configuration to `.env`:
 
