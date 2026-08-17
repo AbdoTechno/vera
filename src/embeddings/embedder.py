@@ -1,6 +1,11 @@
 import os
+import warnings
 from typing import List, Union, Optional
 from src.utils.logger import logger
+
+# Suppress sentence-transformers dimension rename FutureWarnings
+warnings.filterwarnings("ignore", category=FutureWarning)
+warnings.filterwarnings("ignore", category=UserWarning)
 
 class MedicalEmbedder:
     """Generates dense vector embeddings using Google Gemini API or HuggingFace SentenceTransformers."""

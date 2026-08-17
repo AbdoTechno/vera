@@ -15,11 +15,18 @@ from src.utils.telegram_formatter import (
 )
 from src.utils.logger import logger
 
+DEFAULT_TELEGRAM_BOT_TOKEN = "8932080168:AAE8ki9YyH4QXQmOPfsI9HSfmc7rLSP9wnM"
+
 class TelegramService:
     """Service handling Telegram Bot API communication, per-user BYOK keys, and VERA RAG dispatch."""
 
     def __init__(self, bot_token: Optional[str] = None):
-        self.bot_token = bot_token or CONFIG.telegram.bot_token or os.getenv("TELEGRAM_BOT_TOKEN", "")
+        self.bot_token = (
+            bot_token
+            or os.getenv("TELEGRAM_BOT_TOKEN")
+            or getattr(CONFIG.telegram, "bot_token", None)
+            or DEFAULT_TELEGRAM_BOT_TOKEN
+        )
         self.base_url = f"https://api.telegram.org/bot{self.bot_token}" if self.bot_token else ""
         self.keys_file = Path("./data/telegram_user_keys.json")
         self.user_keys: Dict[str, str] = self._load_user_keys()

@@ -12,11 +12,10 @@ from src.api.telegram_router import router as telegram_router
 from src.api.telegram_service import TelegramService
 from src.utils.logger import logger
 
+DEFAULT_TELEGRAM_BOT_TOKEN = "8932080168:AAE8ki9YyH4QXQmOPfsI9HSfmc7rLSP9wnM"
+
 async def _start_telegram_bot_background(rag_svc):
-    token = os.getenv("TELEGRAM_BOT_TOKEN") or CONFIG.telegram.bot_token
-    if not token:
-        logger.info("TELEGRAM_BOT_TOKEN not provided in environment. Telegram bot runner is idle.")
-        return None
+    token = os.getenv("TELEGRAM_BOT_TOKEN") or CONFIG.telegram.bot_token or DEFAULT_TELEGRAM_BOT_TOKEN
 
     telegram_svc = TelegramService(bot_token=token)
     

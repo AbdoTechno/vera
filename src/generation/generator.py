@@ -1,6 +1,12 @@
 import os
+import warnings
 from typing import List, Dict, Any, Optional
 from dotenv import load_dotenv
+
+# Suppress SDK deprecation FutureWarnings for clean production logs
+warnings.filterwarnings("ignore", category=FutureWarning)
+warnings.filterwarnings("ignore", category=UserWarning)
+
 from src.generation.prompt_templates import (
     CLINICAL_SYSTEM_PROMPT_EN, STRICT_GROUNDING_PROMPT_TEMPLATE_EN
 )
