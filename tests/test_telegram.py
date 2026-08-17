@@ -60,14 +60,16 @@ def test_format_clinical_response():
     mock_resp = create_mock_chat_response()
     formatted = format_clinical_response_for_telegram(mock_resp)
     
-    assert "<b>VERA — Clinical Decision Support</b>" in formatted
-    assert "<b>Confidence:</b> 85%" in formatted
-    assert "<b>Executive Summary:</b>" in formatted
-    assert "<b>Clinical Recommendations:</b>" in formatted
-    assert "• Recommendation 1" in formatted
-    assert "<b>Verified Sources:</b>" in formatted
-    assert "[1] <i>guideline.pdf</i> (Page 4 | Dosing)" in formatted
-    assert "<i>Disclaimer: VERA is a research assistant.</i>" in formatted
+    assert "<b>VERA CLINICAL DECISION SUPPORT</b>" in formatted
+    assert "<code>Confidence: 85% | Verified Evidence</code>" in formatted
+    assert "📋 <b>EXECUTIVE SUMMARY</b>" in formatted
+    assert "<blockquote>Test summary</blockquote>" in formatted
+    assert "💡 <b>KEY CLINICAL RECOMMENDATIONS</b>" in formatted
+    assert "<b>1.</b> Recommendation 1" in formatted
+    assert "📚 <b>VERIFIED EVIDENCE SOURCES</b>" in formatted
+    assert "• <b>[1]</b> <i>guideline.pdf</i> (<code>Page 4</code> — Dosing)" in formatted
+    assert "⚖️ <i>VERA is a research assistant.</i>" in formatted
+
 
 def test_split_telegram_message_short():
     text = "Short clinical message."

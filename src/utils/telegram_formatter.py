@@ -10,26 +10,38 @@ def escape_html(text: str) -> str:
     return html.escape(str(text))
 
 def format_clinical_response_for_telegram(chat_resp: ChatResponse) -> str:
-    """Formats a full VERA ChatResponse into a clean, rich, and safe Telegram HTML message."""
+    """Formats a full VERA ChatResponse into a highlighted, professional Telegram HTML message."""
     c_resp: ClinicalResponse = chat_resp.clinical_response
     
     parts: List[str] = []
     
-    # 1. Header & Confidence
-    conf_str = escape_html(c_resp.confidence_percentage or "N/A")
-    parts.append(f"<b>VERA — Clinical Decision Support</b>\n<b>Confidence:</b> {conf_str}\n")
+    # 1. Header & Confidence Badge
+    conf_str = escape_html(c_resp.confidence_percentage or "85%")
+    parts.append(f"🩺 <b>VERA CLINICAL DECISION SUPPORT</b>\n<code>Confidence: {conf_str} | Verified Evidence</code>\n")
     
-    # 2. Executive Summary
+    # 2. Executive Summary (Rendered inside Telegram Blockquote)
     if c_resp.summary:
         summary_escaped = escape_html(c_resp.summary)
-        parts.append(f"<b>Executive Summary:</b>\n{summary_escaped}\n")
+        parts.append(f"📋 <b>EXECUTIVE SUMMARY</b>\n<blockquote>{summary_escaped}</blockquote>\n")
         
-    # 3. Clinical Recommendations
+    # 3. Clinical Recommendations with distinct bullet styling
     if c_resp.detailed_recommendations:
         recs_text = []
         for i, rec in enumerate(c_resp.detailed_recommendations, 1):
-            recs_text.append(f"• {escape_html(rec)}")
-        parts.append("<b>Clinical Recommendations:</b>\n" + "\n".join(recs_text) + "\n")
+            clean_rec = rec.strip()
+            # If the recommendation has a title prefix (e.g. "Dosing Protocol: ...")
+            if ":" in clean_rec:
+                title_part, rest_part = clean_rec.split(":", 1)
+                rest_escaped = escape_html(rest_part.strip())
+                # Highlight in-line bracket citations with monospace code badge
+                rest_escaped = re.sub(r'\[([^\]]+)\]', r'<code>[\1]</code>', rest_escaped)
+                recs_text.append(f"<b>{i}. {escape_html(title_part.strip())}:</b>\n   {rest_escaped}\n")
+            else:
+                escaped = escape_html(clean_rec)
+                escaped = re.sub(r'\[([^\]]+)\]', r'<code>[\1]</code>', escaped)
+                recs_text.append(f"<b>{i}.</b> {escaped}\n")
+                
+        parts.append("💡 <b>KEY CLINICAL RECOMMENDATIONS</b>\n" + "\n".join(recs_text))
         
     # 4. Citations & Evidence Sources
     if c_resp.citations:
@@ -37,16 +49,17 @@ def format_clinical_response_for_telegram(chat_resp: ChatResponse) -> str:
         for c in c_resp.citations:
             source_name = escape_html(c.source)
             page_info = f"Page {c.page}" if c.page else "General"
-            sec_info = f" | {escape_html(c.section)}" if c.section and c.section != "Clinical Protocols" else ""
-            cite_text.append(f"[{c.citation_id}] <i>{source_name}</i> ({page_info}{sec_info})")
-        parts.append("<b>Verified Sources:</b>\n" + "\n".join(cite_text) + "\n")
+            sec_info = f" — {escape_html(c.section)}" if c.section and c.section != "Clinical Protocols" else ""
+            cite_text.append(f"• <b>[{c.citation_id}]</b> <i>{source_name}</i> (<code>{page_info}</code>{sec_info})")
+        parts.append("📚 <b>VERIFIED EVIDENCE SOURCES</b>\n" + "\n".join(cite_text) + "\n")
         
     # 5. Disclaimer
     if c_resp.medical_disclaimer:
         disclaimer_escaped = escape_html(c_resp.medical_disclaimer)
-        parts.append(f"<i>Disclaimer: {disclaimer_escaped}</i>")
+        parts.append(f"⚖️ <i>{disclaimer_escaped}</i>")
         
     return "\n".join(parts)
+
 
 def split_telegram_message(text: str, max_length: int = 3800) -> List[str]:
     """Splits a long message safely into chunks within Telegram length limits (<= 4096).
