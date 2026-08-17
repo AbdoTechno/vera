@@ -65,6 +65,12 @@ class EvaluationConfig(BaseModel):
     metrics: list = ["precision_at_k", "recall_at_k", "citation_accuracy", "faithfulness", "answer_relevance"]
     benchmark_file: str = "./eval_datasets/gold_ground_truth_qa.json"
 
+class TelegramConfig(BaseModel):
+    bot_token: Optional[str] = Field(default_factory=lambda: os.getenv("TELEGRAM_BOT_TOKEN", ""))
+    webhook_url: Optional[str] = Field(default_factory=lambda: os.getenv("TELEGRAM_WEBHOOK_URL", ""))
+    webhook_secret: Optional[str] = Field(default_factory=lambda: os.getenv("TELEGRAM_WEBHOOK_SECRET", ""))
+
+
 class AppConfig(BaseModel):
     paths: PathConfig = Field(default_factory=PathConfig)
     ingestion: IngestionConfig = Field(default_factory=IngestionConfig)
@@ -74,6 +80,8 @@ class AppConfig(BaseModel):
     generation: GenerationConfig = Field(default_factory=GenerationConfig)
     safety: SafetyConfig = Field(default_factory=SafetyConfig)
     evaluation: EvaluationConfig = Field(default_factory=EvaluationConfig)
+    telegram: TelegramConfig = Field(default_factory=TelegramConfig)
+
 
 def load_config(config_path: str = "config/config.yaml") -> AppConfig:
     """Load configuration from YAML file and merge with environment overrides."""

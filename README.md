@@ -239,16 +239,18 @@ vera/
 ├── src/                     # Core application source code
 │   ├── api/                 # FastAPI routes, schemas, and pipeline orchestration
 │   │   ├── main.py          # FastAPI application entry point with lifespan pre-warming
-│   │   ├── routes.py        # REST API endpoint definitions
+│   │   ├── routes.py        # Core REST API endpoint definitions
 │   │   ├── schemas.py       # Pydantic data contracts
-│   │   └── service.py       # RAG pipeline orchestration service
+│   │   ├── service.py       # RAG pipeline orchestration service
+│   │   ├── telegram_router.py  # Telegram webhook and management endpoints
+│   │   └── telegram_service.py # Telegram Bot API communication and dispatch
 │   ├── ingestion/           # Document ingestion, PDF loading, and section chunking
 │   ├── embeddings/          # Vector store management and dense embeddings
 │   ├── retrieval/           # Hybrid retrieval (ChromaDB + BM25) and query expansion
 │   ├── generation/          # Grounded synthesis, prompt templates, and citation formatting
 │   ├── safety/              # Confidence gating, hallucination checks, and refusal engine
 │   ├── evaluation/          # Retrieval and generation evaluation metrics
-│   └── utils/               # Logging, configuration loader, and helper utilities
+│   └── utils/               # Logging, Telegram formatting, and helper utilities
 │
 ├── notebooks/               # Interactive tutorials and verification notebooks
 │   ├── VERA_All_In_One_Learning_Lab.ipynb  # Self-contained 10-step interactive RAG lab
@@ -258,7 +260,8 @@ vera/
 │   ├── test_ingestion.py
 │   ├── test_retrieval.py
 │   ├── test_generation.py
-│   └── test_safety.py
+│   ├── test_safety.py
+│   └── test_telegram.py
 │
 ├── requirements.txt         # Project dependencies
 ├── .env.example             # Environment variable template
@@ -268,15 +271,67 @@ vera/
 
 ---
 
+## Telegram Bot Integration
+
+VERA includes a seamless Telegram Bot integration (`@veramedicalbot`) connected directly to the existing clinical RAG decision-support pipeline.
+
+### 1. Environment Configuration
+
+Add your Telegram bot configuration to `.env`:
+
+```ini
+TELEGRAM_BOT_TOKEN=YOUR_TELEGRAM_BOT_TOKEN
+TELEGRAM_WEBHOOK_URL=https://your-domain.com/telegram/webhook
+TELEGRAM_WEBHOOK_SECRET=optional_secret_token_here
+```
+
+### 2. Local Development & Tunneling
+
+Telegram webhooks require a public HTTPS endpoint. For local development:
+
+1. Start your local VERA FastAPI server:
+   ```bash
+   uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
+   ```
+
+2. Expose port 8000 using an HTTPS tunnel (e.g. [ngrok](https://ngrok.com) or Cloudflare Tunnel):
+   ```bash
+   ngrok http 8000
+   ```
+
+3. Copy the generated HTTPS URL (e.g., `https://abc123.ngrok-free.app`) and set your webhook URL:
+   ```bash
+   # Set TELEGRAM_WEBHOOK_URL in .env:
+   TELEGRAM_WEBHOOK_URL=https://abc123.ngrok-free.app/telegram/webhook
+   ```
+
+4. Register the webhook via the VERA API endpoint:
+   ```bash
+   curl -X POST "http://localhost:8000/telegram/set-webhook" \
+        -H "Content-Type: application/json" \
+        -d '{"webhook_url": "https://abc123.ngrok-free.app/telegram/webhook"}'
+   ```
+
+### 3. Telegram Interaction Example
+
+- **Bot Username:** `@veramedicalbot`
+- **`/start`**: Displays the clinical introduction and overview of VERA.
+- **`/help`**: Provides query syntax guidance and example clinical questions.
+- **Clinical Inquiries:** Send any medical question (e.g., *"What are the initiation criteria and dosing considerations for Nusinersen in SMA patients?"*).
+- **Response Format:** The bot synthesizes the answer with confidence score, executive summary, bulleted recommendations, and verified source citations (`[Document | Page X]`).
+
+---
+
 ## Testing & Quality Assurance
 
 Run the automated test suite to verify pipeline functionality:
 
 ```bash
-# Run all tests
+# Run all tests (including Telegram integration)
 pytest tests/ -v
 
 # Run specific component tests
+pytest tests/test_telegram.py -v
 pytest tests/test_retrieval.py -v
 pytest tests/test_safety.py -v
 ```
@@ -286,3 +341,4 @@ pytest tests/test_safety.py -v
 ## Medical Disclaimer
 
 VERA is intended exclusively for clinical decision support and research assistance by licensed medical professionals. It is not an autonomous diagnostic system and does not replace professional clinical evaluation, diagnosis, or patient management.
+

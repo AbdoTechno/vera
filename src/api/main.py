@@ -4,7 +4,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 from src.api.routes import router as api_router, get_service
+from src.api.telegram_router import router as telegram_router
 from src.utils.logger import logger
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -42,8 +44,10 @@ pdf_dir = Path("./data/raw_pdfs")
 if pdf_dir.exists():
     app.mount("/pdfs", StaticFiles(directory=str(pdf_dir)), name="pdfs")
 
-# Include API router
+# Include API routers
 app.include_router(api_router)
+app.include_router(telegram_router)
+
 
 @app.get("/", tags=["Root"])
 async def root():

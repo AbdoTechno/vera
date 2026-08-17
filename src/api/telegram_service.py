@@ -1,0 +1,207 @@
+import os
+import httpx
+from typing import Dict, Any, Optional, List
+from src.config import CONFIG
+from src.api.schemas import ChatRequest, ChatResponse, DoctorContext
+from src.api.service import VERAClinicalService
+from src.utils.telegram_formatter import (
+    format_clinical_response_for_telegram,
+    split_telegram_message,
+    get_welcome_message,
+    get_help_message,
+    get_error_message
+)
+from src.utils.logger import logger
+
+class TelegramService:
+    """Service handling Telegram Bot API communication, webhook processing, and VERA RAG dispatch."""
+
+    def __init__(self, bot_token: Optional[str] = None):
+        self.bot_token = bot_token or CONFIG.telegram.bot_token or os.getenv("TELEGRAM_BOT_TOKEN", "")
+        self.base_url = f"https://api.telegram.org/bot{self.bot_token}" if self.bot_token else ""
+
+    def _mask_token(self, text: str) -> str:
+        """Sanitizes text to prevent accidental token exposure in logs."""
+        if not self.bot_token:
+            return text
+        return text.replace(self.bot_token, "[REDACTED_TELEGRAM_TOKEN]")
+
+    async def send_chat_action(self, chat_id: int | str, action: str = "typing") -> bool:
+        """Sends a chat action (e.g. typing) to indicate background processing."""
+        if not self.bot_token:
+            logger.warning("Telegram Bot Token is not configured. Cannot send chat action.")
+            return False
+
+        url = f"{self.base_url}/sendChatAction"
+        payload = {"chat_id": chat_id, "action": action}
+
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                resp = await client.post(url, json=payload)
+                return resp.status_code == 200
+        except Exception as e:
+            logger.debug(f"Could not send chat action: {self._mask_token(str(e))}")
+            return False
+
+    async def send_message(
+        self,
+        chat_id: int | str,
+        text: str,
+        parse_mode: str = "HTML"
+    ) -> bool:
+        """Sends one or multiple messages to a Telegram chat, safely splitting if exceeding length limits."""
+        if not self.bot_token:
+            logger.warning("Telegram Bot Token is not configured. Cannot send message.")
+            return False
+
+        chunks = split_telegram_message(text, max_length=3800)
+        url = f"{self.base_url}/sendMessage"
+        all_success = True
+
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            for chunk in chunks:
+                payload = {
+                    "chat_id": chat_id,
+                    "text": chunk,
+                    "parse_mode": parse_mode
+                }
+                try:
+                    resp = await client.post(url, json=payload)
+                    
+                    # If HTML parsing failed due to unexpected tag, retry as plain text
+                    if resp.status_code != 200 and parse_mode == "HTML":
+                        logger.warning(f"Telegram HTML send failed ({resp.status_code}), retrying without parse_mode.")
+                        payload["parse_mode"] = None
+                        resp = await client.post(url, json=payload)
+
+                    if resp.status_code != 200:
+                        all_success = False
+                        logger.error(f"Telegram API send error: status={resp.status_code}, response={self._mask_token(resp.text)}")
+                except Exception as e:
+                    all_success = False
+                    logger.error(f"Telegram network error: {self._mask_token(str(e))}")
+
+        return all_success
+
+    async def set_webhook(self, webhook_url: str, secret_token: Optional[str] = None) -> Dict[str, Any]:
+        """Registers the FastAPI webhook endpoint with Telegram."""
+        if not self.bot_token:
+            return {"ok": False, "description": "TELEGRAM_BOT_TOKEN is not set."}
+
+        url = f"{self.base_url}/setWebhook"
+        payload: Dict[str, Any] = {"url": webhook_url}
+        if secret_token:
+            payload["secret_token"] = secret_token
+
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.post(url, json=payload)
+                data = resp.json()
+                logger.info(f"Telegram setWebhook result: {data.get('description', 'Done')}")
+                return data
+        except Exception as e:
+            masked_err = self._mask_token(str(e))
+            logger.error(f"Failed to set webhook: {masked_err}")
+            return {"ok": False, "description": masked_err}
+
+    async def remove_webhook(self) -> Dict[str, Any]:
+        """Deletes the current Telegram webhook."""
+        if not self.bot_token:
+            return {"ok": False, "description": "TELEGRAM_BOT_TOKEN is not set."}
+
+        url = f"{self.base_url}/deleteWebhook"
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.post(url)
+                return resp.json()
+        except Exception as e:
+            masked_err = self._mask_token(str(e))
+            logger.error(f"Failed to delete webhook: {masked_err}")
+            return {"ok": False, "description": masked_err}
+
+    async def get_webhook_info(self) -> Dict[str, Any]:
+        """Queries Telegram for the current webhook status."""
+        if not self.bot_token:
+            return {"ok": False, "description": "TELEGRAM_BOT_TOKEN is not set."}
+
+        url = f"{self.base_url}/getWebhookInfo"
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.get(url)
+                return resp.json()
+        except Exception as e:
+            masked_err = self._mask_token(str(e))
+            logger.error(f"Failed to get webhook info: {masked_err}")
+            return {"ok": False, "description": masked_err}
+
+    async def process_update(
+        self,
+        update_data: Dict[str, Any],
+        rag_service: VERAClinicalService
+    ) -> Dict[str, Any]:
+        """Processes an incoming Telegram webhook update and dispatches to VERA RAG service."""
+        message = update_data.get("message")
+        if not message:
+            # Ignore non-message updates (inline queries, callback queries, channel posts, etc.)
+            return {"status": "ignored", "reason": "non_message_update"}
+
+        chat = message.get("chat", {})
+        chat_id = chat.get("id")
+        if not chat_id:
+            return {"status": "ignored", "reason": "missing_chat_id"}
+
+        text = message.get("text", "").strip()
+        if not text:
+            # Unsupported message type (photo, document, audio, sticker)
+            await self.send_message(
+                chat_id,
+                "VERA currently processes text-based clinical inquiries. Please type your medical or research question."
+            )
+            return {"status": "handled", "reason": "non_text_message"}
+
+        user = message.get("from", {})
+        username = user.get("username") or user.get("first_name", "Doctor")
+
+        # 1. Handle /start command
+        if text.startswith("/start"):
+            welcome_msg = get_welcome_message()
+            await self.send_message(chat_id, welcome_msg)
+            return {"status": "handled", "action": "start"}
+
+        # 2. Handle /help command
+        if text.startswith("/help"):
+            help_msg = get_help_message()
+            await self.send_message(chat_id, help_msg)
+            return {"status": "handled", "action": "help"}
+
+        # 3. Handle Clinical Inquiries via VERA RAG
+        try:
+            # Signal processing state to Telegram user
+            await self.send_chat_action(chat_id, "typing")
+
+            # Create standard VERA ChatRequest reusing existing RAG pipeline
+            chat_request = ChatRequest(
+                query=text,
+                language="en",
+                doctor_context=DoctorContext(
+                    name=username,
+                    specialty="Clinical User (Telegram)",
+                    notes="Telegram Bot Inquiry"
+                )
+            )
+
+            # Process query through existing VERA Clinical Service (synchronous or background)
+            chat_response: ChatResponse = rag_service.process_clinical_query(chat_request)
+
+            # Format response for Telegram
+            formatted_text = format_clinical_response_for_telegram(chat_response)
+
+            # Send response to user
+            await self.send_message(chat_id, formatted_text)
+            return {"status": "success", "action": "query_answered"}
+
+        except Exception as e:
+            logger.error(f"Error processing Telegram clinical inquiry: {self._mask_token(str(e))}", exc_info=True)
+            error_msg = get_error_message()
+            await self.send_message(chat_id, error_msg)
+            return {"status": "error", "error": "internal_rag_error"}
