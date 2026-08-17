@@ -67,8 +67,9 @@ def test_format_clinical_response():
     assert "💡 <b>KEY CLINICAL RECOMMENDATIONS</b>" in formatted
     assert "<b>1.</b> Recommendation 1" in formatted
     assert "📚 <b>VERIFIED EVIDENCE SOURCES</b>" in formatted
-    assert "• <b>[1]</b> <i>guideline.pdf</i> (<code>Page 4</code> — Dosing)" in formatted
-    assert "⚖️ <i>VERA is a research assistant.</i>" in formatted
+    assert "<b>[1]</b> <code>guideline.pdf</code>" in formatted
+    assert "⚖️ <i>Disclaimer: VERA is a research assistant.</i>" in formatted
+
 
 
 def test_split_telegram_message_short():
