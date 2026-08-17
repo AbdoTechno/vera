@@ -4,6 +4,8 @@ from typing import Dict, Any, Optional, List
 from src.config import CONFIG
 from src.api.schemas import ChatRequest, ChatResponse, DoctorContext
 from src.api.service import VERAClinicalService
+import json
+from pathlib import Path
 from src.utils.telegram_formatter import (
     format_clinical_response_for_telegram,
     split_telegram_message,
@@ -14,11 +16,36 @@ from src.utils.telegram_formatter import (
 from src.utils.logger import logger
 
 class TelegramService:
-    """Service handling Telegram Bot API communication, webhook processing, and VERA RAG dispatch."""
+    """Service handling Telegram Bot API communication, per-user BYOK keys, and VERA RAG dispatch."""
 
     def __init__(self, bot_token: Optional[str] = None):
         self.bot_token = bot_token or CONFIG.telegram.bot_token or os.getenv("TELEGRAM_BOT_TOKEN", "")
         self.base_url = f"https://api.telegram.org/bot{self.bot_token}" if self.bot_token else ""
+        self.keys_file = Path("./data/telegram_user_keys.json")
+        self.user_keys: Dict[str, str] = self._load_user_keys()
+
+    def _load_user_keys(self) -> Dict[str, str]:
+        """Loads persistent per-user Telegram Gemini API keys."""
+        if self.keys_file.exists():
+            try:
+                with open(self.keys_file, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception as e:
+                logger.error(f"Error loading telegram_user_keys: {e}")
+        return {}
+
+    def _save_user_keys(self):
+        """Persists per-user Telegram keys to disk."""
+        try:
+            self.keys_file.parent.mkdir(parents=True, exist_ok=True)
+            with open(self.keys_file, "w", encoding="utf-8") as f:
+                json.dump(self.user_keys, f, indent=2)
+        except Exception as e:
+            logger.error(f"Error saving telegram_user_keys: {e}")
+
+    def get_user_key(self, chat_id: int | str) -> Optional[str]:
+        """Gets API key configured by the Telegram user, falling back to system key if present."""
+        return self.user_keys.get(str(chat_id)) or os.getenv("GEMINI_API_KEY")
 
     def _mask_token(self, text: str) -> str:
         """Sanitizes text to prevent accidental token exposure in logs."""
@@ -139,10 +166,9 @@ class TelegramService:
         update_data: Dict[str, Any],
         rag_service: VERAClinicalService
     ) -> Dict[str, Any]:
-        """Processes an incoming Telegram webhook update and dispatches to VERA RAG service."""
+        """Processes an incoming Telegram webhook update and dispatches to VERA RAG service with user BYOK."""
         message = update_data.get("message")
         if not message:
-            # Ignore non-message updates (inline queries, callback queries, channel posts, etc.)
             return {"status": "ignored", "reason": "non_message_update"}
 
         chat = message.get("chat", {})
@@ -150,9 +176,9 @@ class TelegramService:
         if not chat_id:
             return {"status": "ignored", "reason": "missing_chat_id"}
 
+        str_chat_id = str(chat_id)
         text = message.get("text", "").strip()
         if not text:
-            # Unsupported message type (photo, document, audio, sticker)
             await self.send_message(
                 chat_id,
                 "VERA currently processes text-based clinical inquiries. Please type your medical or research question."
@@ -162,27 +188,120 @@ class TelegramService:
         user = message.get("from", {})
         username = user.get("username") or user.get("first_name", "Doctor")
 
-        # 1. Handle /start command
+        # 1. Handle Key Setup Commands: /setkey <KEY> or /key <KEY>
+        if text.startswith("/setkey") or text.startswith("/key"):
+            parts = text.split(maxsplit=1)
+            if len(parts) > 1 and len(parts[1].strip()) >= 20:
+                raw_key = parts[1].strip()
+                self.user_keys[str_chat_id] = raw_key
+                self._save_user_keys()
+                masked = raw_key[:6] + "..." + raw_key[-4:]
+                await self.send_message(
+                    chat_id,
+                    f"✅ <b>تم حفظ وتفعيل مفتاح Gemini بنجاح!</b> 🩺\n\n"
+                    f"🔑 <b>المفتاح المفعل:</b> <code>{masked}</code>\n\n"
+                    f"يمكنك الآن طرح أي استفسار طبي وسريري مباشرة وسيقوم VERA بالرد مع التوثيق الكامل من الإرشادات المعتمدة."
+                )
+                return {"status": "handled", "action": "key_saved"}
+            else:
+                await self.send_message(
+                    chat_id,
+                    "⚠️ <b>يرجى إدخال مفتاح Gemini صالح.</b>\n\n"
+                    "📌 <b>طريقة الاستخدام:</b>\n"
+                    "<code>/setkey YOUR_GEMINI_API_KEY</code>\n\n"
+                    "💡 <i>يمكنك الحصول على مفتاحك مجاناً من Google AI Studio (aistudio.google.com).</i>"
+                )
+                return {"status": "handled", "action": "key_syntax_error"}
+
+        # 2. Handle /mykey
+        if text == "/mykey":
+            existing_key = self.user_keys.get(str_chat_id)
+            if existing_key:
+                masked = existing_key[:6] + "..." + existing_key[-4:]
+                await self.send_message(
+                    chat_id,
+                    f"🔑 <b>مفتاحك الحالي:</b> <code>{masked}</code>\n\n"
+                    f"لتحديث المفتاح أرسل:\n<code>/setkey NEW_KEY</code>\n"
+                    f"لحذف المفتاح أرسل:\n<code>/delkey</code>"
+                )
+            else:
+                await self.send_message(
+                    chat_id,
+                    "ℹ️ لم تقم بإدخال مفتاح Gemini بعد.\n\n"
+                    "أرسل المفتاح مباشرة أو اكتب:\n<code>/setkey YOUR_KEY</code>"
+                )
+            return {"status": "handled", "action": "mykey"}
+
+        # 3. Handle /delkey
+        if text == "/delkey" or text == "/removekey":
+            if str_chat_id in self.user_keys:
+                del self.user_keys[str_chat_id]
+                self._save_user_keys()
+                await self.send_message(chat_id, "🗑️ تم حذف مفتاح Gemini الخاص بك بنجاح.")
+            else:
+                await self.send_message(chat_id, "ℹ️ لا يوجد مفتاح محفوظ لحذفه.")
+            return {"status": "handled", "action": "key_deleted"}
+
+        # 4. Auto-detect if user directly sent an API key (e.g. starts with AIzaSy)
+        if text.startswith("AIzaSy") and len(text) >= 30 and " " not in text:
+            self.user_keys[str_chat_id] = text
+            self._save_user_keys()
+            masked = text[:6] + "..." + text[-4:]
+            await self.send_message(
+                chat_id,
+                f"✅ <b>تم تفعيل مفتاح Gemini API Key بنجاح!</b> 🩺\n\n"
+                f"🔑 <b>المفتاح:</b> <code>{masked}</code>\n\n"
+                f"أهلاً بك يا دكتور {username}! يمكنك الآن إرسال أي سؤال سريري أو جيني مباشرة."
+            )
+            return {"status": "handled", "action": "key_auto_saved"}
+
+        # 5. Handle /start and /help commands
         if text.startswith("/start"):
             welcome_msg = get_welcome_message()
+            if not self.get_user_key(chat_id):
+                welcome_msg += (
+                    "\n\n🔑 <b>تفعيل البوت (API Key):</b>\n"
+                    "للبدء، يرجى إرسال مفتاح <b>Gemini API Key</b> الخاص بك مباشرة في المحادثة أو كتابة:\n"
+                    "<code>/setkey YOUR_GEMINI_KEY</code>\n\n"
+                    "<i>(احصل على مفتاحك مجاناً من aistudio.google.com)</i>"
+                )
             await self.send_message(chat_id, welcome_msg)
             return {"status": "handled", "action": "start"}
 
-        # 2. Handle /help command
         if text.startswith("/help"):
             help_msg = get_help_message()
+            help_msg += (
+                "\n\n<b>إدارة المفاتيح:</b>\n"
+                "/setkey &lt;KEY&gt; - حفظ أو تحديث مفتاح Gemini الخاص بك\n"
+                "/mykey - عرض حالة المفتاح\n"
+                "/delkey - حذف المفتاح"
+            )
             await self.send_message(chat_id, help_msg)
             return {"status": "handled", "action": "help"}
 
-        # 3. Handle Clinical Inquiries via VERA RAG
+        # 6. Check if user has an active Gemini key
+        effective_user_key = self.get_user_key(chat_id)
+        if not effective_user_key:
+            await self.send_message(
+                chat_id,
+                "👋 <b>مرحباً دكتور!</b>\n\n"
+                "🔑 <b>لتفعيل استفسارات VERA الطبية:</b>\n"
+                "يرجى تزويد البوت بمفتاح Google Gemini API Key الخاص بك.\n\n"
+                "📌 <b>طريقة التفعيل السريعة:</b>\n"
+                "أرسل المفتاح مباشرة في المحادثة، أو اكتب:\n"
+                "<code>/setkey AIzaSy...</code>\n\n"
+                "💡 <i>المفتاح مجاني بالكامل ويمكنك استخراجه في ثوانٍ من <a href=\"https://aistudio.google.com/\">Google AI Studio</a>، ويتم حفظه بشكل خاص وآمن لك فقط.</i>"
+            )
+            return {"status": "handled", "action": "key_required_prompt"}
+
+        # 7. Handle Clinical Inquiries via VERA RAG
         try:
-            # Signal processing state to Telegram user
             await self.send_chat_action(chat_id, "typing")
 
-            # Create standard VERA ChatRequest reusing existing RAG pipeline
             chat_request = ChatRequest(
                 query=text,
-                language="en",
+                language="ar" if any('\u0600' <= c <= '\u06FF' for c in text) else "en",
+                api_key=effective_user_key,
                 doctor_context=DoctorContext(
                     name=username,
                     specialty="Clinical User (Telegram)",
@@ -190,18 +309,24 @@ class TelegramService:
                 )
             )
 
-            # Process query through existing VERA Clinical Service (synchronous or background)
             chat_response: ChatResponse = rag_service.process_clinical_query(chat_request)
-
-            # Format response for Telegram
             formatted_text = format_clinical_response_for_telegram(chat_response)
-
-            # Send response to user
             await self.send_message(chat_id, formatted_text)
             return {"status": "success", "action": "query_answered"}
 
         except Exception as e:
-            logger.error(f"Error processing Telegram clinical inquiry: {self._mask_token(str(e))}", exc_info=True)
+            err_str = str(e)
+            logger.error(f"Error processing Telegram clinical inquiry: {self._mask_token(err_str)}", exc_info=True)
+            
+            if any(k in err_str.lower() for k in ["api_key_invalid", "api key not valid", "permission_denied", "401"]):
+                await self.send_message(
+                    chat_id,
+                    "⚠️ <b>مفتاح Gemini API Key الخاص بك غير صالح أو منتهي الصلاحية.</b>\n\n"
+                    "يرجى إرسال مفتاح جديد باستخدام:\n"
+                    "<code>/setkey YOUR_NEW_KEY</code>"
+                )
+                return {"status": "error", "error": "invalid_api_key"}
+            
             error_msg = get_error_message()
             await self.send_message(chat_id, error_msg)
             return {"status": "error", "error": "internal_rag_error"}

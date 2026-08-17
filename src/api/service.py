@@ -127,12 +127,13 @@ class VERAClinicalService:
         elif is_valid_key_format(api_key_header):
             custom_key = api_key_header.strip()
 
-        # Strict BYOK: The key MUST come from the mobile/web app request
-        effective_key = custom_key
+        # Priority: Client BYOK key (from Flutter app) -> System environment key (for Telegram bot)
+        system_key = os.getenv("GEMINI_API_KEY", "").strip()
+        effective_key = custom_key or (system_key if is_valid_key_format(system_key) else "")
         provider = request.provider.lower() if request.provider else "gemini"
 
         if not effective_key:
-            logger.warning("Rejected clinical query: Missing Gemini API Key from client request.")
+            logger.warning("Rejected clinical query: Missing Gemini API Key from request and environment.")
             raise HTTPException(
                 status_code=401,
                 detail=(
