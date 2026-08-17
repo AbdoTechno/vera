@@ -1,0 +1,73 @@
+# ==============================================================================
+# VERA — Clinical Decision Support System Master Configuration
+# ==============================================================================
+
+system:
+  name: "VERA"
+  version: "1.0.0"
+  description: "Verified Evidence Retrieval Assistant for Clinical Decision Support"
+  environment: "development"
+  log_level: "INFO"
+  log_dir: "./logs"
+
+paths:
+  raw_pdfs_dir: "./data/raw_pdfs"
+  processed_dir: "./data/processed"
+  knowledge_base_dir: "./data/knowledge_base"
+  vector_db_dir: "./data/vector_db"
+  eval_datasets_dir: "./eval_datasets"
+  output_reports_dir: "./reports"
+
+ingestion:
+  chunking_strategy: "section_aware" # Options: section_aware, recursive_character, token_based
+  chunk_size: 600                    # Target tokens/words per chunk
+  chunk_overlap: 100                 # Overlap tokens/words
+  min_chunk_length: 50               # Minimum length to discard noise
+  preserve_section_headers: true
+  extract_tables: true
+  extract_images_metadata: false
+
+embeddings:
+  provider: "huggingface"            # Options: huggingface, openai, gemini
+  model_name: "BAAI/bge-base-en-v1.5" # Excellent balance of high accuracy and fast local speed
+  device: "cpu"                      # "cpu" or "cuda"
+  normalize_embeddings: true
+  batch_size: 32
+
+vector_store:
+  type: "chromadb"                   # Options: chromadb, faiss
+  collection_name: "vera_clinical_guidelines"
+  distance_metric: "cosine"          # Options: cosine, l2, ip
+
+retrieval:
+  top_k: 4
+  search_type: "hybrid"              # Options: dense, hybrid, bm25
+  similarity_threshold: 0.60         # Minimum cosine similarity to pass to generator
+  bm25_weight: 0.3                   # Weight for BM25 in hybrid search
+  dense_weight: 0.7                  # Weight for Dense vector in hybrid search
+  rerank_enabled: false
+  reranker_model: "cross-encoder/ms-marco-MiniLM-L-6-v2"
+
+generation:
+  provider: "gemini"                 # Configured for Google Gemini API
+  model_name: "models/gemini-3.7-flash" # Google Gemini 3.7 Flash Model
+  temperature: 0.0                   # Deterministic generation for clinical safety
+  max_tokens: 1024
+  strict_grounding: true             # Forbid ungrounded assertions
+
+safety:
+  confidence_gate_enabled: true
+  min_retrieval_confidence: 0.60     # Below this triggers Refusal Engine
+  hallucination_check_enabled: true
+  nli_threshold: 0.75                # Natural Language Inference entailment threshold
+  enable_medical_disclaimer: true
+  disclaimer_text: "VERA is an evidence-grounded research assistant and does not provide autonomous clinical diagnosis or replace medical practitioners."
+
+evaluation:
+  metrics:
+    - "precision_at_k"
+    - "recall_at_k"
+    - "citation_accuracy"
+    - "faithfulness"
+    - "answer_relevance"
+  benchmark_file: "./eval_datasets/gold_ground_truth_qa.json"

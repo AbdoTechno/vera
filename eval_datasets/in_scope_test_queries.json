@@ -1,0 +1,32 @@
+[
+  {
+    "id": "IN_001",
+    "query": "What are the recommended treatments for Spinal Muscular Atrophy according to best practice guidelines?",
+    "category": "treatment",
+    "expected_doc_ids": ["DOC_003", "DOC_004"]
+  },
+  {
+    "id": "IN_002",
+    "query": "What is the mechanism of action of Nusinersen (Spinraza)?",
+    "category": "pharmacology",
+    "expected_doc_ids": ["DOC_003", "DOC_004"]
+  },
+  {
+    "id": "IN_003",
+    "query": "How is onasemnogene abeparvovec (Zolgensma) administered and what are its precautions?",
+    "category": "gene_therapy",
+    "expected_doc_ids": ["DOC_003"]
+  },
+  {
+    "id": "IN_004",
+    "query": "How does long-read sequencing resolve complex chromosomal rearrangements compared to short reads?",
+    "category": "genomics",
+    "expected_doc_ids": ["DOC_001"]
+  },
+  {
+    "id": "IN_005",
+    "query": "Why are diagnoses of SMA missed in short-read exome and panel sequencing datasets?",
+    "category": "diagnostics",
+    "expected_doc_ids": ["DOC_002"]
+  }
+]

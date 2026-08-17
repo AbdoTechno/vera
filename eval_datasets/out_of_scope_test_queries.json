@@ -1,0 +1,26 @@
+[
+  {
+    "id": "OUT_001",
+    "query": "What is the primary treatment protocol for Type 2 Diabetes Mellitus?",
+    "category": "unrelated_medical",
+    "expected_action": "REFUSE"
+  },
+  {
+    "id": "OUT_002",
+    "query": "How to treat acute appendicitis in adult patients?",
+    "category": "unrelated_medical",
+    "expected_action": "REFUSE"
+  },
+  {
+    "id": "OUT_003",
+    "query": "Can you explain how to fix an engine oil leak in a car?",
+    "category": "non_medical",
+    "expected_action": "REFUSE"
+  },
+  {
+    "id": "OUT_004",
+    "query": "What are the latest stock market trends for biotech companies?",
+    "category": "financial",
+    "expected_action": "REFUSE"
+  }
+]

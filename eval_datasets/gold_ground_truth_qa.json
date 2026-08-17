@@ -1,0 +1,30 @@
+[
+  {
+    "id": "GOLD_001",
+    "query": "What are the approved therapies for Spinal Muscular Atrophy mentioned in the guidelines?",
+    "relevant_doc_ids": ["DOC_003", "DOC_004"],
+    "gold_citations": [
+      "ClinPediatr_2023_SMA_Treatment_Best_Practices.pdf",
+      "IJMS_2023_SMA_Past_Present_Future_Review.pdf"
+    ],
+    "ground_truth_answer": "The three FDA-approved disease-modifying therapies for Spinal Muscular Atrophy (SMA) are: 1) Nusinersen (Spinraza), an intrathecal antisense oligonucleotide; 2) Onasemnogene abeparvovec (Zolgensma), an AAV9-based IV gene replacement therapy; and 3) Risdiplam (Evrysdi), an oral small-molecule SMN2 pre-mRNA splicing modifier."
+  },
+  {
+    "id": "GOLD_002",
+    "query": "Why can SMN1 deletions be missed in short-read sequencing?",
+    "relevant_doc_ids": ["DOC_002"],
+    "gold_citations": [
+      "medRxiv_2024_SMA_Missed_Diagnoses_Sequencing.pdf"
+    ],
+    "ground_truth_answer": "SMN1 and SMN2 share high sequence identity (differing by only a single nucleotide in exon 7). Short-read sequencing struggles to uniquely map reads in this repetitive and duplicated region, leading to missed diagnoses unless specialized caller tools or long-read sequencing are used."
+  },
+  {
+    "id": "GOLD_003",
+    "query": "What are the advantages of long-read sequencing in detecting chromosomal rearrangements?",
+    "relevant_doc_ids": ["DOC_001"],
+    "gold_citations": [
+      "GenomeResearch_2024_LongRead_Chromosomal_Rearrangements.pdf"
+    ],
+    "ground_truth_answer": "Long-read sequencing (such as PacBio HiFi and Oxford Nanopore) spans repetitive regions, complex breakpoints, and structural variations that are invisible to short reads, allowing base-pair resolution of balanced translocations, inversions, and complex insertions."
+  }
+]
