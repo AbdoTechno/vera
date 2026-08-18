@@ -9,18 +9,20 @@ class Chunk(BaseModel):
     doc_id: str
     doc_name: str
     section: str
-    page_number: int
+    page_number: int # Starting page number of the chunk
     content: str
     token_count: int = 0
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
 class MedicalChunker:
-    """Implements section-aware and token-bounded chunking for clinical guidelines."""
+    """Implements section-aware and token-bounded chunking for clinical guidelines.
+    (splits text into chunks while respecting sections and word limits.)"""
 
     SECTION_PATTERNS = [
-        r'^(?:[0-9]+\.|\b[IVXLCDM]+\.|\b[A-Z]\.)\s+[A-Z][A-Za-z0-9\s,-]+$',
-        r'^(?:ABSTRACT|INTRODUCTION|BACKGROUND|METHODS|RESULTS|DISCUSSION|TREATMENT|RECOMMENDATIONS|CONCLUSION|REFERENCES|BEST PRACTICES|DIAGNOSIS)\b',
-        r'^[A-Z\s]{4,40}$' # All uppercase headers
+        # handle multi-level numbered headings like 1.1., 1.2.3.
+        r'^(\d+(\.\d+)*)\.?\s+[A-Z][A-Za-z0-9\s,;\-—]+$',
+        r'^(?:ABSTRACT|INTRODUCTION|BACKGROUND|METHODS|RESULTS|DISCUSSION|TREATMENT|RECOMMENDATIONS|CONCLUSION|REFERENCES|BEST PRACTICES|DIAGNOSIS|ETHICS)\b',
+        r'^[A-Z\s]{4,80}$' # All uppercase headers, allowing longer headers
     ]
 
     def __init__(self, chunk_size: int = 600, chunk_overlap: int = 100, min_chunk_length: int = 50):
@@ -29,19 +31,45 @@ class MedicalChunker:
         self.min_chunk_length = min_chunk_length
 
     def is_section_header(self, line: str) -> bool:
-        """Detects if a single line acts as a clinical section header."""
+        """Detects if a single line matches any section header pattern.."""
         line = line.strip()
-        if len(line) < 3 or len(line) > 80:
+        if len(line) < 3 or len(line) > 100: # max length for headers
             return False
         for pattern in self.SECTION_PATTERNS:
-            if re.search(pattern, line, re.IGNORECASE):
+            if re.search(pattern, line):
                 return True
         return False
 
     def chunk_pages(self, pages_data: List[Dict[str, Any]]) -> List[Chunk]:
         """Creates section-aware, metadata-rich chunks from extracted page data."""
-        chunks: List[Chunk] = []
+        all_chunks: List[Chunk] = []
+        
+        current_buffer_lines = [] # Stores lines for the current potential chunk
         current_section = "General Overview"
+        current_doc_id = None
+        current_doc_name = None
+        current_doc_meta = {}
+        current_chunk_start_page = None # Page number of the *first* line in current_buffer_lines
+
+        def _add_chunk_from_buffer(buffer_text_lines: List[str], page_for_chunk: int):
+            nonlocal all_chunks
+            if not buffer_text_lines:
+                return
+            
+            chunk_content = " ".join(buffer_text_lines)
+            words_count = len(chunk_content.split())
+            
+            if words_count >= self.min_chunk_length:
+                 all_chunks.append(Chunk(
+                    chunk_id=str(uuid.uuid4())[:8], # Generate new ID for each flushed chunk
+                    doc_id=current_doc_id,
+                    doc_name=current_doc_name,
+                    section=current_section,
+                    page_number=page_for_chunk,
+                    content=chunk_content,
+                    token_count=words_count,
+                    metadata=current_doc_meta
+                ))
 
         for page in pages_data:
             doc_name = page["doc_name"]
@@ -49,67 +77,81 @@ class MedicalChunker:
             doc_meta = page.get("metadata", {})
             doc_id = doc_meta.get("doc_id", doc_name.split(".")[0])
             text = page.get("text", "")
-
-            # Split text by paragraphs/lines
             lines = text.split("\n")
-            current_buffer = []
-            current_words_count = 0
 
-            for line in lines:
+            # Check for new document. If so, flush existing buffer and reset context.
+            if current_doc_id is None or current_doc_id != doc_id:
+                if current_buffer_lines:
+                    _add_chunk_from_buffer(current_buffer_lines, current_chunk_start_page)
+                current_buffer_lines = []
+                current_section = "General Overview"
+                current_doc_id = doc_id
+                current_doc_name = doc_name
+                current_doc_meta = doc_meta
+                current_chunk_start_page = None # Reset for new document
+
+            # If current_buffer_lines is empty, it means a new chunk is starting.
+            # Set its starting page to the current page.
+            if not current_buffer_lines and current_chunk_start_page is None:
+                current_chunk_start_page = page_num
+
+            for line_idx, line in enumerate(lines):
                 cleaned_line = line.strip()
                 if not cleaned_line:
                     continue
 
                 if self.is_section_header(cleaned_line):
-                    # Flush current buffer if it has content
-                    if current_buffer and current_words_count >= self.min_chunk_length:
-                        chunk_text = " ".join(current_buffer)
-                        chunks.append(Chunk(
-                            doc_id=doc_id,
-                            doc_name=doc_name,
-                            section=current_section,
-                            page_number=page_num,
-                            content=chunk_text,
-                            token_count=current_words_count,
-                            metadata=doc_meta
-                        ))
-                        current_buffer = []
-                        current_words_count = 0
-                    current_section = cleaned_line
+                    # If we have content for the OLD section, flush it
+                    if current_buffer_lines:
+                        _add_chunk_from_buffer(current_buffer_lines, current_chunk_start_page)
+                        current_buffer_lines = [] # Clear buffer after flushing
+                    
+                    current_section = cleaned_line # Update section for *new* content
+                    current_chunk_start_page = page_num # New chunk starts with this new section
+                    continue # Do not add header to content, it's metadata
 
-                words = cleaned_line.split()
-                current_buffer.append(cleaned_line)
-                current_words_count += len(words)
+                # Accumulate content in the buffer
+                current_buffer_lines.append(cleaned_line)
+                current_words_in_buffer = len(" ".join(current_buffer_lines).split())
 
-                # Check if buffer exceeded chunk size
-                if current_words_count >= self.chunk_size:
-                    chunk_text = " ".join(current_buffer)
-                    chunks.append(Chunk(
-                        doc_id=doc_id,
-                        doc_name=doc_name,
-                        section=current_section,
-                        page_number=page_num,
-                        content=chunk_text,
-                        token_count=current_words_count,
-                        metadata=doc_meta
-                    ))
-                    # Overlap handling: retain the last few words
-                    overlap_words = words[-min(len(words), self.chunk_overlap):]
-                    current_buffer = [" ".join(overlap_words)]
-                    current_words_count = len(overlap_words)
+                # If current buffer content exceeds chunk_size, split it
+                if current_words_in_buffer >= self.chunk_size:
+                    # Find a good split point within the accumulated text
+                    full_text_so_far = " ".join(current_buffer_lines)
+                    words_so_far = full_text_so_far.split()
 
-            # Flush remaining words on the page
-            if current_buffer and current_words_count >= self.min_chunk_length:
-                chunk_text = " ".join(current_buffer)
-                chunks.append(Chunk(
-                    doc_id=doc_id,
-                    doc_name=doc_name,
-                    section=current_section,
-                    page_number=page_num,
-                    content=chunk_text,
-                    token_count=current_words_count,
-                    metadata=doc_meta
-                ))
+                    # Determine the split index to make the first part ~chunk_size
+                    # This prioritizes sentence breaks if possible for better coherence
+                    split_idx = self.chunk_size
+                    temp_chunk_text = " ".join(words_so_far[:split_idx])
+                    
+                    # Look for a sentence-ending punctuation near the target split_idx
+                    last_period_idx = max(temp_chunk_text.rfind('.'), 
+                                          temp_chunk_text.rfind('!'), 
+                                          temp_chunk_text.rfind('?'))
 
-        logger.success(f"Generated {len(chunks)} structured chunks across {len(pages_data)} pages.")
-        return chunks
+                    # If a suitable punctuation is found and it's not too far off
+                    if last_period_idx != -1 and (split_idx - last_period_idx < (self.chunk_size * 0.2)) and (last_period_idx > self.min_chunk_length * 0.8):
+                        # Adjust split_idx to be after the sentence end
+                        split_idx = len(temp_chunk_text[:last_period_idx+1].split())
+                    
+                    # Ensure split_idx is not too small due to sentence splitting
+                    if split_idx < self.min_chunk_length:
+                        split_idx = self.chunk_size # Fallback to hard split if sentence split is too aggressive
+
+                    # Form the chunk to add
+                    chunk_to_add_words = words_so_far[:split_idx]
+                    _add_chunk_from_buffer(chunk_to_add_words, current_chunk_start_page)
+
+                    # Prepare the remaining content for the next buffer with overlap
+                    remaining_words_start_idx = max(0, split_idx - self.chunk_overlap)
+                    remaining_words = words_so_far[remaining_words_start_idx:]
+                    
+                    current_buffer_lines = [" ".join(remaining_words)] if remaining_words else []
+                    current_chunk_start_page = page_num # The subsequent chunk (from remaining content) starts from current page
+
+        # After all pages and lines are processed, flush any remaining content
+        if current_buffer_lines:
+            _add_chunk_from_buffer(current_buffer_lines, current_chunk_start_page)
+        logger.success(f"Generated {len(all_chunks)} structured chunks.")
+        return all_chunks
