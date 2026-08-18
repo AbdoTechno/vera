@@ -26,11 +26,12 @@ class IngestionConfig(BaseModel):
     extract_images_metadata: bool = False
 
 class EmbeddingsConfig(BaseModel):
-    provider: str = Field(default_factory=lambda: os.getenv("EMBEDDING_PROVIDER", "gemini" if os.getenv("GEMINI_API_KEY") else "huggingface"))
-    model_name: str = Field(default_factory=lambda: os.getenv("EMBEDDING_MODEL", "models/text-embedding-004" if os.getenv("GEMINI_API_KEY") else "BAAI/bge-small-en-v1.5"))
+    provider: str = "huggingface"
+    model_name: str = "BAAI/bge-small-en-v1.5"
     device: str = "cpu"
     normalize_embeddings: bool = True
     batch_size: int = 32
+
 
 class VectorStoreConfig(BaseModel):
     type: str = "chromadb"

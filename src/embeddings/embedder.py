@@ -60,6 +60,13 @@ class MedicalEmbedder:
 
         # Local HuggingFace SentenceTransformers
         try:
+            try:
+                import torch
+                torch.set_num_threads(1)
+                torch.set_grad_enabled(False)
+            except Exception:
+                pass
+
             from sentence_transformers import SentenceTransformer
             logger.info(f"Loading Local Model: '{self.model_name}' on device '{self.device}'...")
             try:
@@ -68,6 +75,7 @@ class MedicalEmbedder:
                 self.model = SentenceTransformer(self.model_name, device=self.device)
             dim = getattr(self.model, "get_embedding_dimension", getattr(self.model, "get_sentence_embedding_dimension", lambda: 384))()
             logger.success(f"Model '{self.model_name}' loaded successfully (dim={dim})")
+
         except ImportError:
             logger.warning("sentence-transformers not installed. Using local deterministic fallback.")
         except Exception as e:
