@@ -57,16 +57,18 @@ async def upload_document(
     if not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are supported.")
 
-    upload_dir = Path("./data/raw_pdfs")
-    upload_dir.mkdir(parents=True, exist_ok=True)
-    saved_path = upload_dir / file.filename
+    import tempfile
+
+    # Use safe system temp file for processing without permanent disk bloat
+    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
+    temp_path = temp_file.name
 
     try:
-        with open(saved_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+        shutil.copyfileobj(file.file, temp_file)
+        temp_file.close()
 
         upload_result = service.ingest_new_pdf(
-            file_path=str(saved_path),
+            file_path=temp_path,
             original_filename=file.filename,
             category=category,
             gemini_api_key=x_gemini_api_key
@@ -74,6 +76,13 @@ async def upload_document(
         return upload_result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to process PDF: {str(e)}")
+    finally:
+        if os.path.exists(temp_path):
+            try:
+                os.remove(temp_path)
+            except Exception:
+                pass
+
 
 @router.get("/domains", response_model=MedicalDomains, summary="Get Active & Upcoming Clinical Domains")
 async def get_clinical_domains():
