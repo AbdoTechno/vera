@@ -51,3 +51,7 @@ desktop.ini
 *.bin
 *.pt
 *.onnx
+
+# 8. Internal Hackathon Preparation & Defense Notes
+# HACKATHON_*.md
+
