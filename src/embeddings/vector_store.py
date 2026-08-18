@@ -28,22 +28,31 @@ class VectorStoreManager:
         try:
             import chromadb
             os.makedirs(self.persist_dir, exist_ok=True)
-            self.client = chromadb.PersistentClient(path=self.persist_dir)
+            try:
+                self.client = chromadb.PersistentClient(path=str(Path(self.persist_dir).resolve()))
+            except (Exception, BaseException) as e:
+                logger.warning(f"ChromaDB PersistentClient initialization issue ({type(e).__name__}): {e}. Using Client fallback.")
+                self.client = chromadb.Client()
             
             if reset:
                 try:
                     self.client.delete_collection(self.collection_name)
                     logger.info(f"Reset existing ChromaDB collection: '{self.collection_name}'")
-                except Exception:
+                except (Exception, BaseException):
                     pass
 
             self.collection = self.client.get_or_create_collection(
                 name=self.collection_name,
                 metadata={"hnsw:space": "cosine"}
             )
-            logger.info(f"VectorStoreManager connected to ChromaDB collection: '{self.collection_name}' (Current count: {self.collection.count()})")
+            count = self.collection.count() if hasattr(self.collection, "count") else 0
+            logger.info(f"VectorStoreManager connected to ChromaDB collection: '{self.collection_name}' (Current count: {count})")
         except ImportError:
             logger.warning("chromadb not installed. VectorStoreManager will use in-memory store fallback.")
+        except (Exception, BaseException) as e:
+            logger.error(f"Vector store init error: {e}")
+
+
 
     def reset(self):
         """Deletes and recreates the collection to accommodate new embedding models or dimensions."""
@@ -120,15 +129,29 @@ class VectorStoreManager:
                 })
             return len(self._in_memory_docs)
 
-    def search(self, query: str, top_k: int = 4) -> List[Dict[str, Any]]:
-        """Searches the vector store with dense embedding query."""
+    def search(
+        self,
+        query: str,
+        top_k: int = 4,
+        where: Optional[Dict[str, Any]] = None
+    ) -> List[Dict[str, Any]]:
+        """Searches the vector store with dense embedding query and optional metadata filtering."""
         if self.collection and self.collection.count() > 0:
             query_embedding = self.embedder.embed_query(query)
-            results = self.collection.query(
-                query_embeddings=[query_embedding],
-                n_results=min(top_k, self.collection.count()),
-                include=["documents", "metadatas", "distances"]
-            )
+            query_kwargs = {
+                "query_embeddings": [query_embedding],
+                "n_results": min(top_k, self.collection.count()),
+                "include": ["documents", "metadatas", "distances"]
+            }
+            if where:
+                query_kwargs["where"] = where
+
+            try:
+                results = self.collection.query(**query_kwargs)
+            except Exception as e:
+                logger.warning(f"Vector search with where filter failed ({e}); retrying without filter.")
+                query_kwargs.pop("where", None)
+                results = self.collection.query(**query_kwargs)
 
             formatted_results = []
             if results and results.get("documents") and results["documents"][0]:
@@ -148,10 +171,16 @@ class VectorStoreManager:
         else:
             # Fallback search
             results = []
-            for doc in self._in_memory_docs[:top_k]:
+            candidates = self._in_memory_docs
+            if where:
+                for k, v in where.items():
+                    candidates = [d for d in candidates if d.get("metadata", {}).get(k) == v]
+
+            for doc in candidates[:top_k]:
                 results.append({
                     "content": doc["content"],
                     "metadata": doc["metadata"],
                     "similarity_score": 0.85
                 })
             return results
+

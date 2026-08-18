@@ -33,6 +33,10 @@ logs/
 .agents/
 .gemini/
 
+# 5. Local Vector Database Storage
+data/vector_db/
+
+
 # 6. IDE, Editors & OS Files
 .vscode/
 .idea/

@@ -41,15 +41,18 @@ async def clinical_chat(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Clinical Pipeline Error: {str(e)}")
 
-@router.post("/upload-document", response_model=UploadResponse, summary="Ingest Institutional PDF Guideline")
+from fastapi.responses import FileResponse
+
+@router.post("/upload-document", response_model=UploadResponse, summary="Ingest Institutional PDF Guideline with AI Guardrail")
 async def upload_document(
     file: UploadFile = File(..., description="Medical PDF file to ingest"),
     title: Optional[str] = Form(default=None),
     category: Optional[str] = Form(default="Clinical Guidelines"),
+    x_gemini_api_key: Optional[str] = Header(default=None, alias="X-Gemini-API-Key"),
     service: VERAClinicalService = Depends(get_service)
 ):
     """
-    Allows physicians/institutions to upload new PDF guidelines for dynamic vectorization.
+    Validates uploaded PDF using AI Guardrails before dynamic chunking and indexing into ChromaDB.
     """
     if not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are supported.")
@@ -65,11 +68,12 @@ async def upload_document(
         upload_result = service.ingest_new_pdf(
             file_path=str(saved_path),
             original_filename=file.filename,
-            category=category
+            category=category,
+            gemini_api_key=x_gemini_api_key
         )
         return upload_result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to ingest PDF: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to process PDF: {str(e)}")
 
 @router.get("/domains", response_model=MedicalDomains, summary="Get Active & Upcoming Clinical Domains")
 async def get_clinical_domains():
@@ -88,16 +92,41 @@ async def get_clinical_domains():
         ]
     )
 
-@router.get("/documents", summary="List Indexed Guidelines & Resources")
+@router.get("/documents", summary="List Indexed Guidelines & Direct Download URLs")
 async def list_indexed_documents(service: VERAClinicalService = Depends(get_service)):
     """
-    Returns all indexed medical documents and their direct doclinks for the Flutter PDF viewer.
+    Returns all indexed medical documents, metadata, and direct download/view URLs for Flutter & web.
     """
+    enriched_docs = []
+    for doc in service.document_registry:
+        fn = doc.get("filename", "")
+        doc_entry = dict(doc)
+        doc_entry["download_url"] = f"/api/v1/documents/{fn}/download"
+        doc_entry["view_url"] = f"/pdfs/{fn}"
+        enriched_docs.append(doc_entry)
+
     return {
         "status": "success",
-        "count": len(service.document_registry),
-        "documents": service.document_registry
+        "count": len(enriched_docs),
+        "documents": enriched_docs
     }
+
+@router.get("/documents/{filename}/download", summary="Download Original PDF Guideline")
+async def download_pdf_document(filename: str):
+    """
+    Directly downloads an institutional guideline PDF file.
+    """
+    file_path = Path("./data/raw_pdfs") / filename
+    if not file_path.exists() or not file_path.is_file():
+        raise HTTPException(status_code=404, detail=f"Document '{filename}' was not found on the server.")
+
+    return FileResponse(
+        path=str(file_path),
+        media_type="application/pdf",
+        filename=filename,
+        headers={"Content-Disposition": f"attachment; filename=\"{filename}\""}
+    )
+
 
 @router.get("/health", response_model=HealthResponse, summary="System Health & Vector DB Status")
 async def health_check(service: VERAClinicalService = Depends(get_service)):

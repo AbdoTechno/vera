@@ -1,9 +1,10 @@
 import json
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from src.config import CONFIG
 from src.ingestion.pdf_loader import PDFLoader
 from src.ingestion.chunker import MedicalChunker
+from src.safety.document_validator import validate_medical_document
 from src.api.schemas import UploadResponse
 from src.utils.logger import logger
 
@@ -36,39 +37,61 @@ def ingest_pdf_document(
     vector_store,
     chunk_catalog: List[Dict[str, Any]],
     document_registry: List[Dict[str, Any]],
-    retriever
+    retriever,
+    gemini_api_key: Optional[str] = None
 ) -> UploadResponse:
-    """Dynamically ingests, chunks, and embeds an uploaded medical PDF into ChromaDB and BM25 index."""
-    logger.info(f"Ingesting new PDF guideline: {original_filename}")
+    """Dynamically validates, chunks, and embeds an uploaded medical PDF with AI Guardrail protection."""
+    logger.info(f"AI Guardrail: Validating uploaded document '{original_filename}'...")
     
-    # Generate new Doc ID
+    # 1. AI Guardrail Validation
+    validation = validate_medical_document(file_path, gemini_api_key=gemini_api_key)
+    
+    if validation.decision == "REJECT":
+        logger.warning(f"AI Guardrail REJECTED '{original_filename}': {validation.reason}")
+        return UploadResponse(
+            status="rejected",
+            message=f"Document rejected: {validation.reason}",
+            filename=original_filename,
+            doc_id="DOC_REJECTED",
+            pages_processed=0,
+            chunks_indexed=0,
+            doclink="",
+            decision="REJECT",
+            domain=validation.domain,
+            document_type=validation.document_type,
+            confidence=validation.confidence,
+            reason=validation.reason,
+            warnings=validation.warnings
+        )
+    
+    # 2. Proceed with Ingestion for PASS / REVIEW
     doc_count = len(document_registry) + 1
     doc_id = f"DOC_{doc_count:03d}"
     
-    # 1. Parse PDF pages
+    # Parse PDF pages
     loader = PDFLoader()
     pages = loader.load_pdf(
         pdf_path=file_path,
         doc_metadata={
             "doc_id": doc_id,
-            "category": category,
+            "category": validation.domain or category,
             "title": original_filename,
             "doc_name": original_filename
         }
     )
     total_pages = len(pages) if pages else 1
     
-    # 2. Chunk document pages
+    # Chunk document pages
     chunker = MedicalChunker(
         chunk_size=CONFIG.ingestion.chunk_size,
         chunk_overlap=CONFIG.ingestion.chunk_overlap
     )
     chunks = chunker.chunk_pages(pages)
     
-    # 3. Add to ChromaDB vector store
+    # Add to ChromaDB vector store
     vector_store.index_chunks(chunks)
     
-    # 4. Add to in-memory catalog and re-initialize BM25
+    # Add to in-memory catalog and re-initialize BM25
     raw_chunks_dicts = [
         {
             "chunk_id": c.chunk_id,
@@ -85,19 +108,20 @@ def ingest_pdf_document(
     retriever.chunks_corpus = chunk_catalog
     retriever._init_bm25()
     
-    # 5. Update registry
+    # Update registry
     reg_entry = {
         "doc_id": doc_id,
         "filename": original_filename,
         "title": original_filename.replace(".pdf", ""),
         "source": "Uploaded Institutional Guideline",
         "published_year": "2026",
-        "category": category,
-        "total_pages": total_pages
+        "category": validation.domain or category,
+        "total_pages": total_pages,
+        "document_type": validation.document_type
     }
     document_registry.append(reg_entry)
 
-    # 6. Persist catalog & registry to disk
+    # Persist catalog & registry to disk
     try:
         catalog_path = Path("./data/processed/chunk_catalog.json")
         catalog_path.parent.mkdir(parents=True, exist_ok=True)
@@ -111,12 +135,20 @@ def ingest_pdf_document(
     except Exception as e:
         logger.warning(f"Could not persist updated registry/catalog to disk: {e}")
 
+    logger.success(f"Successfully validated & indexed '{original_filename}' ({len(chunks)} vectors, decision: {validation.decision})")
+    
     return UploadResponse(
         status="success",
-        message=f"Guideline '{original_filename}' successfully indexed with {len(chunks)} searchable vectors.",
+        message=f"Guideline '{original_filename}' passed AI validation and was indexed with {len(chunks)} searchable vectors.",
         filename=original_filename,
         doc_id=doc_id,
         pages_processed=total_pages,
         chunks_indexed=len(chunks),
-        doclink=f"{original_filename}#page=1"
+        doclink=f"{original_filename}#page=1",
+        decision=validation.decision,
+        domain=validation.domain,
+        document_type=validation.document_type,
+        confidence=validation.confidence,
+        reason=validation.reason,
+        warnings=validation.warnings
     )

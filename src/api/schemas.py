@@ -12,6 +12,9 @@ class ChatRequest(BaseModel):
     doctor_context: Optional[DoctorContext] = Field(default_factory=DoctorContext)
     api_key: Optional[str] = Field(default=None, description="Optional override for Gemini/OpenAI API key")
     provider: Optional[str] = Field(default="gemini", description="LLM provider: 'gemini' or 'openai'")
+    doc_id: Optional[str] = Field(default=None, description="Optional document ID to scope inquiry strictly to a single paper/guideline (Private Document Chat)")
+    doc_name: Optional[str] = Field(default=None, description="Optional filename to scope inquiry strictly to a single paper/guideline")
+
 
 class SourceFound(BaseModel):
     doc_id: str
@@ -82,10 +85,17 @@ class UploadResponse(BaseModel):
     status: str = "success"
     message: str
     filename: str
-    doc_id: str
-    pages_processed: int
-    chunks_indexed: int
-    doclink: str
+    doc_id: str = "DOC_UNKNOWN"
+    pages_processed: int = 0
+    chunks_indexed: int = 0
+    doclink: str = ""
+    decision: Optional[str] = "PASS"
+    domain: Optional[str] = None
+    document_type: Optional[str] = None
+    confidence: Optional[float] = 1.0
+    reason: Optional[str] = None
+    warnings: List[str] = []
+
 
 class HealthResponse(BaseModel):
     status: str = "healthy"

@@ -35,12 +35,26 @@ class HybridRetriever:
         except ImportError:
             logger.warning("rank_bm25 not installed. HybridRetriever will rely on dense retrieval.")
 
-    def retrieve(self, query: str, top_k: int = 4) -> List[Dict[str, Any]]:
-        """Executes hybrid retrieval combining dense vector search and BM25."""
+    def retrieve(
+        self,
+        query: str,
+        top_k: int = 4,
+        doc_filter: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """Executes hybrid retrieval combining dense vector search and BM25 with optional document scoping."""
         search_query = self.expander.expand(query) if self.expander else query
         
-        # 1. Dense search
-        dense_results = self.vector_store.search(search_query, top_k=top_k * 2)
+        # Determine metadata filter if doc_filter is provided
+        where_filter = None
+        if doc_filter:
+            clean_filter = doc_filter.strip()
+            if clean_filter.startswith("DOC_"):
+                where_filter = {"doc_id": clean_filter}
+            else:
+                where_filter = {"doc_name": clean_filter}
+        
+        # 1. Dense search with filter
+        dense_results = self.vector_store.search(search_query, top_k=top_k * 2, where=where_filter)
 
         # If BM25 is not initialized or corpus empty, return dense results
         if not self.bm25 or not self.chunks_corpus:
@@ -50,8 +64,18 @@ class HybridRetriever:
         tokenized_query = search_query.lower().split()
         bm25_scores = self.bm25.get_scores(tokenized_query)
         
-        # Rank BM25 results
-        bm25_ranked_indices = sorted(range(len(bm25_scores)), key=lambda i: bm25_scores[i], reverse=True)[:top_k * 2]
+        # Filter and rank BM25 results
+        valid_indices = []
+        for i, score in enumerate(bm25_scores):
+            if doc_filter:
+                chunk = self.chunks_corpus[i]
+                c_doc_id = str(chunk.get("doc_id", "")).strip()
+                c_doc_name = str(chunk.get("doc_name", "")).strip()
+                if doc_filter != c_doc_id and doc_filter != c_doc_name:
+                    continue
+            valid_indices.append(i)
+
+        bm25_ranked_indices = sorted(valid_indices, key=lambda i: bm25_scores[i], reverse=True)[:top_k * 2]
         
         # 3. Reciprocal Rank Fusion (RRF)
         rrf_scores: Dict[str, float] = {}
@@ -68,6 +92,7 @@ class HybridRetriever:
             chunk = self.chunks_corpus[idx]
             cid = f"{chunk.get('doc_id')}_{chunk.get('page_number')}_{chunk.get('content')[:30]}"
             if cid not in chunk_map:
+                max_score = max(bm25_scores) if max(bm25_scores) > 0 else 1.0
                 chunk_map[cid] = {
                     "content": chunk.get("content"),
                     "metadata": {
@@ -76,7 +101,7 @@ class HybridRetriever:
                         "section": chunk.get("section"),
                         "page_number": chunk.get("page_number")
                     },
-                    "similarity_score": round(float(bm25_scores[idx] / (max(bm25_scores) + 1e-6)), 4)
+                    "similarity_score": round(float(bm25_scores[idx] / max_score), 4)
                 }
             rrf_scores[cid] = rrf_scores.get(cid, 0.0) + (self.bm25_weight / (60 + rank + 1))
 
@@ -84,5 +109,7 @@ class HybridRetriever:
         sorted_cids = sorted(rrf_scores.keys(), key=lambda k: rrf_scores[k], reverse=True)
         final_results = [chunk_map[cid] for cid in sorted_cids[:top_k]]
 
-        logger.info(f"Hybrid retrieval completed: returned top {len(final_results)} chunks.")
+        scope_tag = f" (scoped to '{doc_filter}')" if doc_filter else ""
+        logger.info(f"Hybrid retrieval completed{scope_tag}: returned top {len(final_results)} chunks.")
         return final_results
+

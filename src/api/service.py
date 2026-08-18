@@ -79,8 +79,14 @@ class VERAClinicalService:
             status="Completed"
         )
 
-        # 3. Step 2: Evidence Retrieval
-        retrieved_chunks = self.retriever.retrieve(request.query, top_k=CONFIG.retrieval.top_k)
+        # 3. Step 2: Evidence Retrieval with optional Document Scope
+        doc_filter = request.doc_id or request.doc_name
+        retrieved_chunks = self.retriever.retrieve(
+            request.query,
+            top_k=CONFIG.retrieval.top_k,
+            doc_filter=doc_filter
+        )
+
         sources_found: List[SourceFound] = []
         
         for ch in retrieved_chunks:
@@ -193,8 +199,14 @@ class VERAClinicalService:
             available_medical_domains=domains
         )
 
-    def ingest_new_pdf(self, file_path: str, original_filename: str, category: str = "Clinical Guidelines") -> UploadResponse:
-        """Dynamically ingests a newly uploaded medical PDF into ChromaDB and hybrid index."""
+    def ingest_new_pdf(
+        self,
+        file_path: str,
+        original_filename: str,
+        category: str = "Clinical Guidelines",
+        gemini_api_key: Optional[str] = None
+    ) -> UploadResponse:
+        """Dynamically ingests a newly uploaded medical PDF into ChromaDB with AI Guardrail validation."""
         return ingest_pdf_document(
             file_path=file_path,
             original_filename=original_filename,
@@ -202,5 +214,7 @@ class VERAClinicalService:
             vector_store=self.vector_store,
             chunk_catalog=self.chunk_catalog,
             document_registry=self.document_registry,
-            retriever=self.retriever
+            retriever=self.retriever,
+            gemini_api_key=gemini_api_key
         )
+

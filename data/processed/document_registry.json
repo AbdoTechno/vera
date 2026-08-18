@@ -99,5 +99,25 @@
     "published_year": "2026",
     "category": "Spinal Muscular Atrophy",
     "total_pages": 52
+  },
+  {
+    "doc_id": "DOC_007",
+    "filename": "ClinPediatr_2023_SMA_Treatment_Best_Practices.pdf",
+    "title": "ClinPediatr_2023_SMA_Treatment_Best_Practices",
+    "source": "Uploaded Institutional Guideline",
+    "published_year": "2026",
+    "category": "Spinal Muscular Atrophy (SMA)",
+    "total_pages": 13,
+    "document_type": "Clinical Guideline / Research Paper"
+  },
+  {
+    "doc_id": "DOC_008",
+    "filename": "ClinPediatr_2023_SMA_Treatment_Best_Practices.pdf",
+    "title": "ClinPediatr_2023_SMA_Treatment_Best_Practices",
+    "source": "Uploaded Institutional Guideline",
+    "published_year": "2026",
+    "category": "Spinal Muscular Atrophy (SMA)",
+    "total_pages": 13,
+    "document_type": "Clinical Guideline / Research Paper"
   }
 ]
