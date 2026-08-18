@@ -51,8 +51,13 @@ class TelegramService:
             logger.error(f"Error saving telegram_user_keys: {e}")
 
     def get_user_key(self, chat_id: int | str) -> Optional[str]:
-        """Gets API key configured specifically by this Telegram user."""
-        return self.user_keys.get(str(chat_id))
+        """Gets API key configured specifically by this Telegram user or system default."""
+        user_key = self.user_keys.get(str(chat_id))
+        if user_key and len(user_key.strip()) >= 15:
+            return user_key.strip()
+        system_key = os.getenv("GEMINI_API_KEY", "").strip()
+        return system_key if len(system_key) >= 15 else None
+
 
     def _mask_token(self, text: str) -> str:
         """Sanitizes text to prevent accidental token exposure in logs."""

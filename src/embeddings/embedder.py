@@ -62,8 +62,12 @@ class MedicalEmbedder:
         try:
             from sentence_transformers import SentenceTransformer
             logger.info(f"Loading Local Model: '{self.model_name}' on device '{self.device}'...")
-            self.model = SentenceTransformer(self.model_name, device=self.device)
-            logger.success(f"Model '{self.model_name}' loaded successfully (dim={self.model.get_sentence_embedding_dimension()})")
+            try:
+                self.model = SentenceTransformer(self.model_name, device=self.device, local_files_only=True)
+            except Exception:
+                self.model = SentenceTransformer(self.model_name, device=self.device)
+            dim = getattr(self.model, "get_embedding_dimension", getattr(self.model, "get_sentence_embedding_dimension", lambda: 384))()
+            logger.success(f"Model '{self.model_name}' loaded successfully (dim={dim})")
         except ImportError:
             logger.warning("sentence-transformers not installed. Using local deterministic fallback.")
         except Exception as e:
@@ -71,9 +75,10 @@ class MedicalEmbedder:
             try:
                 from sentence_transformers import SentenceTransformer
                 self.model_name = "BAAI/bge-small-en-v1.5"
-                self.model = SentenceTransformer(self.model_name, device=self.device)
+                self.model = SentenceTransformer(self.model_name, device=self.device, local_files_only=True)
             except Exception:
                 pass
+
 
     def embed_texts(self, texts: List[str]) -> List[List[float]]:
         """Embeds a batch of texts/passages."""
