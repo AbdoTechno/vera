@@ -246,3 +246,32 @@ class VERAClinicalService:
             gemini_api_key=gemini_api_key
         )
 
+    def delete_document(self, doc_id_or_filename: str) -> bool:
+        """Removes a document, its chunks, and vectors from active memory."""
+        target = doc_id_or_filename.strip().lower()
+        before_reg = len(self.document_registry)
+
+        
+        self.document_registry = [
+            d for d in self.document_registry
+            if d.get("doc_id", "").lower() != target and d.get("filename", "").lower() != target
+        ]
+        
+        self.chunk_catalog = [
+            c for c in self.chunk_catalog
+            if c.get("doc_id", "").lower() != target and c.get("doc_name", "").lower() != target
+        ]
+        
+        self.retriever.chunks_corpus = self.chunk_catalog
+        self.retriever._init_bm25()
+        
+        if self.vector_store.collection:
+            try:
+                where = {"doc_id": doc_id_or_filename} if doc_id_or_filename.startswith("DOC_") else {"doc_name": doc_id_or_filename}
+                self.vector_store.collection.delete(where=where)
+            except Exception:
+                pass
+                
+        return len(self.document_registry) < before_reg
+
+

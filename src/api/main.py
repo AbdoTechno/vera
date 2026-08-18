@@ -70,16 +70,13 @@ async def _start_telegram_bot_background(rag_svc):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Pre-warm RAG pipeline & vector store in background on server boot
+    # Pre-warm RAG pipeline & vector store on server boot
     logger.info("Pre-warming VERA RAG services and vector store...")
-    rag_svc = get_service()
+    _ = get_service()
     logger.success("VERA RAG services pre-warmed and ready for instant queries.")
-    
-    bot_task = await _start_telegram_bot_background(rag_svc)
     yield
-    if bot_task:
-        bot_task.cancel()
     logger.info("Shutting down VERA services.")
+
 
 app = FastAPI(
     title="VERA - Clinical Intelligence Platform API",

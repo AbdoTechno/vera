@@ -136,6 +136,18 @@ async def download_pdf_document(filename: str):
         headers={"Content-Disposition": f"attachment; filename=\"{filename}\""}
     )
 
+@router.delete("/documents/{doc_id_or_filename}", summary="Delete Document from Active Vector Store & Memory")
+async def delete_document(doc_id_or_filename: str, service: VERAClinicalService = Depends(get_service)):
+    """
+    Removes an uploaded session document and its vectors from active memory.
+    """
+    removed = service.delete_document(doc_id_or_filename)
+    return {
+        "status": "success" if removed else "not_found",
+        "message": f"Document '{doc_id_or_filename}' was removed from active memory." if removed else "Document not found in registry."
+    }
+
+
 
 @router.get("/health", response_model=HealthResponse, summary="System Health & Vector DB Status")
 async def health_check(service: VERAClinicalService = Depends(get_service)):
