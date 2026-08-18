@@ -1,31 +1,26 @@
-# 📚 Data Management Module (`data/`)
+# Data Management & Storage (`data/`)
 
-مجلد إدارة البيانات لمشروع **VERA**، ويشمل دورة حياة المستندات الطبية من ملفات الـ PDF الأصلية وحتى النصوص المهيكلة وقواعد المعرفة.
+This directory manages the lifecycle of medical guideline documents, extracted text chunks, and structured knowledge catalogs.
 
 ---
 
-## 🗂️ الهيكل التنظيمي للمجلد
+## Directory Organization
 
 ```
 data/
-├── raw_pdfs/             # ملفات الإرشادات والأبحاث الطبية الرسمية (PDFs)
-├── processed/            # النصوص المستخرجة، الجداول، ومقاطع النصوص المهيكلة (JSONs)
-├── knowledge_base/       # قواعد المعرفة النصية الشاملة بصيغة Markdown
-└── vector_db/            # قاعدة البيانات الشعاعية المخزنة محلياً (ChromaDB / FAISS)
+|-- processed/            # Structured chunk catalogs and document registries (JSON)
+|   |-- chunk_catalog.json     # Section-aware chunk catalog with page indices
+|   `-- document_registry.json # Registered guideline metadata
+|-- raw_pdfs/             # Institutional medical guideline PDF documents
+`-- vector_db/            # Local vector database storage (ChromaDB / FAISS)
 ```
 
 ---
 
-## 📋 نظرة عامة على المجلدات الفرعية
+## Subdirectories
 
 1. **`raw_pdfs/`**:
-   - يحتوي على الأبحاث والإرشادات الطبية المعتمدة (مثل إرشادات الضمور العضلي الشوكي SMA وأبحاث تسلسل الجينوم).
-   - انظر [raw_pdfs/README.md](file:///d:/AI%20Hackathon/New%20data/data/raw_pdfs/README.md).
+   - Stores source institutional guidelines (such as Spinal Muscular Atrophy consensus statements and long-read sequencing studies).
 
 2. **`processed/`**:
-   - يحتوي على نواتج المعالجة والاستخراج الأولي للنصوص والتقطيع المهيكل بحسب الأقسام وأرقام الصفحات.
-   - انظر [processed/README.md](file:///d:/AI%20Hackathon/New%20data/data/processed/README.md).
-
-3. **`knowledge_base/`**:
-   - يحتوي على قاعدة المعرفة الطبية الموحدة والمفهرسة بروابط للمستندات والصفحات.
-   - انظر [knowledge_base/README.md](file:///d:/AI%20Hackathon/New%20data/data/knowledge_base/README.md).
+   - Contains extracted, deduplicated chunk catalogs (`chunk_catalog.json`) and document metadata registries (`document_registry.json`) with page numbers and section labels.

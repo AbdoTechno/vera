@@ -1,23 +1,25 @@
-# 🧪 Automated Tests Suite (`tests/`)
+# Automated Testing Suite (`tests/`)
 
-يحتوي هذا المجلد على اختبارات الوحدة والتكامل (Unit & Integration Tests) لضمان موثوقية كامل منظومة **VERA**.
+This directory contains unit and integration test suites validating the reliability of the VERA platform.
 
 ---
 
-## 📁 ملفات الاختبارات
+## Test Suites
 
-| اسم الملف | الطبقة المختبرة | الجوانب التي يتم التحقق منها |
+| File | Layer | Validated Functionality |
 | :--- | :--- | :--- |
-| `test_ingestion.py` | Layer 1: Ingestion | كفاءة التقطيع الواعي بالأقسام والحفاظ على بيانات الصفحات. |
-| `test_retrieval.py` | Layer 2: Retrieval | دقة توسيع الاستعلامات الطبية والمطابقة الدلالية. |
-| `test_generation.py` | Layer 3: Generation | استخراج وفحص الاقتباسات المرجعية `[Doc | Sec | Page]`. |
-| `test_safety.py` | Layer 4: Safety | التحقق من رفض الحالات الطارئة، الأسئلة خارج النطاق، وبوابة الثقة. |
+| `test_ingestion.py` | Ingestion | Section-aware chunking boundaries and page-number metadata preservation. |
+| `test_retrieval.py` | Retrieval | Query expansion, synonym mapping, and BM25 token matching. |
+| `test_generation.py` | Generation | Citation extraction, citation tags `[Document#page=X]`, and formatting. |
+| `test_safety.py` | Safety | Emergency interception, out-of-scope refusal, and similarity score gating. |
+| `test_telegram.py` | Telegram Integration | HTML card rendering, message paragraph splitting, and webhook handlers. |
 
 ---
 
-## 🚀 تشغيل الاختبارات
+## Running Tests
 
-لتنفيذ كافة الاختبارات دفعة واحدة:
+Execute all tests:
+
 ```bash
-pytest tests/ -v
+pytest -v
 ```

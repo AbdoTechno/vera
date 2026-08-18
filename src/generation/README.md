@@ -1,30 +1,29 @@
-# ✍️ Generation Layer (`src/generation/`)
+# Grounded Clinical Generation & Citations (`src/generation/`)
 
-تعد هذه الطبقة **(Layer 3: Generation Layer)** المسؤولة عن توليد الإجابات السريرية المنضبطة بالأدلة والمستندة حصرياً إلى السياق المسترجع وفقاً لمتطلبات اليوم الثالث (Day 3).
-
----
-
-## 🎯 الأهداف والوظائف
-
-1. **التوليد الصارم القائم على الأدلة (Strict Grounded Generation)**:
-   - إلزام النموذج بالاعتماد الحصري على الأدلة المسترجعة وحظر استخدام المعرفة العامة الخارجية لمنع الهلوسة.
-   - ضبط درجة الحرارة (`temperature = 0.0`) لأعلى درجات الدقة الحتمية.
-2. **الاستشهاد المرجعي الشفاف (Transparent Citations)**:
-   - إلحاق كل استنتاج أو توصية طبية باستشهاد دقيق يتضمن: `[اسم المستند | القسم | رقم الصفحة]`.
-3. **آلية الرفض الصريح (Refusal Mechanism)**:
-   - الإعلان الفوري عن عدم كفاية الأدلة عند ورود أسئلة خارج نطاق الإرشادات المتاحة.
+This module manages context-grounded response generation, prompt templates, and in-line citation extraction.
 
 ---
 
-## 📁 محتويات الوحدة
+## Technical Workflow
 
-- `prompt_templates.py`: قوالب التوجيه الصارمة لضمان السلامة السريرية وهيكلة الإجابة.
-- `generator.py`: محرك التوليد المتوافق مع نماذج OpenAI (GPT-4o), Google Gemini, والوضع المحلي التجريبي.
-- `citation_formatter.py`: التحقق البرمجي التلقائي من صحة الاقتباسات ومطابقتها للمقاطع المسترجعة.
+1. **System Prompts & Grounding Templates (`prompts.py`)**:
+   - Strictly instructs the language model to rely exclusively on the provided medical guideline context.
+   - Enforces bullet-point recommendations and explicit citation formatting (`[Source: Document#page=X]`).
+   - Forbids autonomous ungrounded speculation or dosage invention.
+
+2. **Multi-Provider Client (`generator.py`)**:
+   - Supports Google Gemini (`models/gemini-3.1-flash-lite`, `gemini-1.5-flash`) and OpenAI (`gpt-4o-mini`).
+   - Supports dynamic per-request API key override (BYOK).
+   - Zero-temperature configuration (`temperature=0.0`) for deterministic clinical recommendations.
+
+3. **Citation Parser & Formatter (`citation_formatter.py`)**:
+   - Parses generated text to extract structured citation objects with document title, page number, and section.
+   - Formats evidence blocks passed into the generation prompt.
 
 ---
 
-## 🚀 كيفية التجربة والاختبار
+## Module Files
 
-انظر المفكرة التفاعلية:
-`notebooks/04_grounded_generation_citations.ipynb`
+- `generator.py`: Multi-provider LLM generation client with dynamic key support.
+- `prompts.py`: Clinical system prompts and strict context templates in English and Arabic.
+- `citation_formatter.py`: In-line citation tag parser, validator, and formatter.

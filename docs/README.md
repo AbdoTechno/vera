@@ -1,11 +1,11 @@
-# 📚 Documentation & Reference Assets (`docs/`)
+# Documentation & Architectural Reference (`docs/`)
 
-يحتوي هذا المجلد على كافة الوثائق التوضيحية، المخططات المعمارية، وتفاصيل النطاق الطبي ومعايير التحكيم الخاصة بنظام **VERA**.
+This directory contains system documentation, architectural sequence diagrams, and clinical reference assets for the VERA platform.
 
 ---
 
-## 📁 محتويات المجلد
+## Documentation Contents
 
-- `architecture_diagrams.md`: المخططات المعمارية ومسارات معالجة الاستعلامات السريرية بصيغة Mermaid.
-- `judging_rubric_alignment.md`: جدول المطابقة المفصل مع معايير تقييم الهاكاثون الرسمية (100 درجة).
-- `clinical_guideline_summary.md`: ملخص علمي وسريري للأوراق البحثية والإرشادات الطبية المعتمدة في النظام.
+- `architecture_diagrams.md`: Mermaid sequence diagrams illustrating clinical query lifecycles, RRF retrieval, and safety gating.
+- `judging_rubric_alignment.md`: Detailed alignment matrix mapped to evaluation criteria.
+- `clinical_guideline_summary.md`: Scientific summaries of indexed institutional guidelines and clinical protocols.

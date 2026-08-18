@@ -1,33 +1,35 @@
-# 🛡️ Safety & Guardrails Layer (`src/safety/`)
+# Clinical Safety, Confidence Gates & Guardrails (`src/safety/`)
 
-تعد هذه الطبقة **(Layer 4: Safety Layer)** صمام الأمان الطبي للنظام وفقاً لمتطلبات اليوم الرابع (Day 4) ومعايير السلامة السريرية للهاكاثون.
-
----
-
-## 🎯 الأهداف والوظائف
-
-1. **بوابة الثقة الاسترجاعية (Confidence Gate)**:
-   - فحص درجات التشابه للمقاطع المسترجعة (`similarity_score`).
-   - حجب عملية التوليد وإطلاق آلية الرفض إذا كانت الثقة أقل من العتبة المحددة (`0.62`).
-2. **محرك الرفض الذكي (Refusal Engine)**:
-   - رفض الاستعلامات الطارئة (Emergency queries) وتوجيه المستخدم للخدمات الإسعافية.
-   - رفض الأسئلة الخارجة عن نطاق الإرشادات المعتمدة (Out-of-scope).
-   - إرفاق التنبيه القانوني والسريري الإلزامي (Medical Disclaimer).
-3. **كاشف الهلوسة والادعاءات غير الموثقة (Hallucination Checker)**:
-   - التحقق من أن كل جملة مولدة مدعومة بنص صريح داخل المقاطع المسترجعة.
-   - التحقق البرمجي من صحة الاقتباسات المرجعية.
+This module enforces clinical safety boundaries, pre-retrieval refusal, confidence verification, and AI document validation.
 
 ---
 
-## 📁 محتويات الوحدة
+## Safety Architecture
 
-- `confidence_gate.py`: تقييم جودة الاسترجاع قبل الإرسال لنموذج اللغة.
-- `refusal_engine.py`: نصوص وقواعد الرفض المنظم والاستجابة الآمنة.
-- `hallucination_checker.py`: مدقق التطابق والوفاء للنص الأصلي (Faithfulness).
+1. **Pre-Retrieval Interceptor (`refusal_engine.py`)**:
+   - Inspects queries before vector retrieval to detect acute emergencies (chest pain, severe hemorrhage, loss of consciousness) and non-medical topics (recipes, entertainment, sports).
+   - Immediately returns structured refusal responses with 0% confidence without invoking downstream LLMs.
+
+2. **Confidence Gate (`confidence_gate.py`)**:
+   - Evaluates the maximum similarity score of retrieved evidence.
+   - If the best matching passage similarity is below **0.60**, generation is blocked to prevent clinical hallucination, returning an `Insufficient Evidence Refusal`.
+
+3. **AI Document Ingestion Guardrail (`document_validator.py`)**:
+   - Evaluates uploaded PDF documents before chunking and vector indexing.
+   - Extracts a smart profile sample (Abstract, middle clinical sections, conclusions ~1500 tokens).
+   - Generates a structured decision:
+     - `PASS`: Verified institutional medical guideline (proceeds to indexing).
+     - `REVIEW`: Medical document with ambiguous clinical scope.
+     - `REJECT`: Non-medical or corrupt document (blocked from indexing).
+
+4. **Hallucination & Faithfulness Checker (`hallucination_checker.py`)**:
+   - Evaluates sentence-level grounding of the generated response against retrieved evidence chunks.
 
 ---
 
-## 🚀 كيفية التجربة والاختبار
+## Module Files
 
-انظر المفكرة التفاعلية:
-`notebooks/05_safety_guardrails_evaluation.ipynb`
+- `refusal_engine.py`: Pre-retrieval emergency and out-of-scope inquiry interceptor.
+- `confidence_gate.py`: Retrieval similarity score threshold evaluator.
+- `document_validator.py`: AI-powered guideline upload validator.
+- `hallucination_checker.py`: Post-generation factual consistency verifier.

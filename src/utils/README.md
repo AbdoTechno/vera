@@ -1,10 +1,15 @@
-# 🛠️ Utilities Module (`src/utils/`)
+# Shared Utilities (`src/utils/`)
 
-يحتوي هذا المجلد على الدوال المساعدة وأدوات التسجيل (Logging) المستخدمة عبر كافة طبقات النظام.
+This module provides logging, environment helpers, and text sanitization functions used across the platform.
 
 ---
 
-## 📁 الملفات الرئيسية
+## Core Utilities
 
-- `logger.py`: إعداد نظام التسجيل المركزي الملون والملفات المرجعية مع التدوير التلقائي للسجلات.
-- `helpers.py`: دوال تنظيف النصوص، صياغة الاستشهادات المرجعية، وقراءة/كتابة ملفات الـ JSON بترميز UTF-8.
+1. **Structured Logging (`logger.py`)**:
+   - Configures formatted standard-output stream logging (`sys.stdout`) compatible with cloud container runners (Railway, Docker, Hugging Face Spaces).
+   - Safe non-blocking file-logging fallbacks for local development environments.
+
+2. **Helper Functions**:
+   - UTF-8 JSON serialization and deserialization.
+   - Text sanitization, regex cleanup, and citation parsing helpers.

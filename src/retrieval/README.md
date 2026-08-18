@@ -1,26 +1,31 @@
-# 🔍 Retrieval Layer (`src/retrieval/`)
+# Hybrid Retrieval & Ranking Subsystem (`src/retrieval/`)
 
-تعد هذه الطبقة **(Layer 2: Retrieval Layer)** الركيزة الأساسية للوصول إلى أعلى دقة استرجاع للأدلة السريرية وفقاً لمتطلبات اليوم الثاني (Day 2).
-
----
-
-## 🎯 الأهداف والوظائف
-
-1. **البحث الدلالي عالي الدقة (Semantic Search)**: استرجاع أفضل المقاطع (Top-K) بناءً على تشابه الجيب تمام مع تصفية المقاطع ذات درجات التطابق الضعيفة.
-2. **البحث الهجين (Hybrid Search: BM25 + Dense)**: الدمج الذكي بين البحث النصي بالكلمات المفتاحية الطبية (مثل أسماء الأدوية والجينات `SMN1`, `Nusinersen`) والبحث الدلالي باستخدام خوارزمية Reciprocal Rank Fusion (RRF).
-3. **التوسيع الذكي للاستعلامات (Medical Query Expansion)**: توسيع المصطلحات السريرية والمرادفات الطبية لضمان عدم تفويت الأدلة.
+This module implements the hybrid search engine combining dense vector similarity with sparse lexical search.
 
 ---
 
-## 📁 محتويات الوحدة
+## Retrieval Architecture
 
-- `semantic_search.py`: محرك البحث الدلالي النقي مع عتبات الثقة (`similarity_threshold`).
-- `hybrid_retriever.py`: محرك البحث الهجين الدامج لـ BM25 و Dense Embeddings.
-- `query_expansion.py`: قاموس المرادفات والمصطلحات الإكلينيكية والجينات.
+1. **Dense Vector Search**:
+   - Computes query embeddings via `BAAI/bge-small-en-v1.5` and performs cosine nearest-neighbor search in ChromaDB.
+   - Captures semantic intent and clinical concept synonyms.
+
+2. **Sparse Lexical Search (`rank_bm25`)**:
+   - Uses Okapi BM25 index over tokenized clinical chunk catalog.
+   - Accurately matches specific gene symbols (`SMN1`, `SMN2`), pharmaceutical brand names (`Spinraza`, `Zolgensma`, `Evrysdi`), and diagnostic keywords (`PacBio`, `Nanopore`).
+
+3. **Reciprocal Rank Fusion (RRF)**:
+   - Combines dense and sparse ranked candidates using reciprocal rank fusion:
+     $$RRF(d) = \sum_{m} \frac{w_m}{60 + r_m(d)}$$
+   - Default weights: Dense Weight = 0.6, BM25 Weight = 0.4.
+
+4. **Document Scoping Support**:
+   - When a specific `doc_id` or `doc_name` is passed, candidate generation is strictly constrained to chunks originating from that document.
 
 ---
 
-## 🚀 كيفية التجربة والاختبار
+## Module Files
 
-انظر المفكرة التفاعلية:
-`notebooks/03_retrieval_optimization.ipynb`
+- `hybrid_retriever.py`: Hybrid RRF search orchestrator.
+- `query_expansion.py`: Medical synonym and Arabic-English terminology expansion dictionary.
+- `semantic_search.py`: Standalone dense vector search utility.

@@ -1,30 +1,29 @@
-# 📥 Ingestion & Document Processing (`src/ingestion/`)
+# Document Ingestion & Section-Aware Chunking (`src/ingestion/`)
 
-تعد هذه الطبقة **(Layer 1: Document Ingestion Layer)** حجر الأساس في بنية نظام **VERA** وفقاً لمتطلبات اليوم الأول (Day 1).
-
----
-
-## 🎯 الأهداف والوظائف
-
-1. **استخراج النصوص والجداول بدقة (PDF Parsing)**: قراءة ملفات الإرشادات الطبية باستخدام `pdfplumber` مع الحفاظ على ترقيم الصفحات الحقيقي.
-2. **التقطيع الواعي بالأقسام (Section-Aware Chunking)**: تقسيم النصوص استناداً لعناوين الأقسام الطبية (`ABSTRACT`, `METHODS`, `TREATMENT`, `RECOMMENDATIONS`) مع نافذة تداخل متغيرة.
-3. **تضمين البيانات الوصفية (Metadata Enrichment)**: ربط كل مقطع باسم المستند، القسم، ورقم الصفحة لضمان دقة الاستشهاد المرجعي 100%.
+This module handles document ingestion, PDF parsing, text normalization, and section-aware clinical chunking.
 
 ---
 
-## 📁 محتويات الوحدة
+## Core Capabilities
 
-- `pdf_loader.py`: مستخرج النصوص والجداول مع تنظيف الرموز والأسطر المقطوعة.
-- `chunker.py`: محرك التقطيع الذكي مع موازنة حجم المقاطع وتتبع الأقسام.
-- `metadata_extractor.py`: معالج وموحد البيانات الوصفية للمستندات.
+1. **High-Fidelity PDF Extraction (`pdf_loader.py`)**:
+   - Uses `pdfplumber` and `pypdf` to extract text from clinical guideline documents.
+   - Preserves original page numbering across all extracted text blocks.
+   - Cleans broken line wraps, hyphenated medical terms, and whitespace irregularities.
+
+2. **Section-Aware Clinical Chunking (`chunker.py`)**:
+   - Splits text hierarchically using clinical section headers (`Dosing`, `Administration`, `Diagnosis`, `Monitoring`, `Adverse Reactions`).
+   - Default parameters: **500 tokens chunk size** with **100 tokens overlap** (20% overlap window).
+   - Preserves semantic boundaries so dosing tables and eligibility criteria are not split across disjoint chunks.
+
+3. **Metadata Enrichment (`metadata_extractor.py`)**:
+   - Tags each chunk with `doc_id`, `doc_name`, `page_number`, `section`, and `token_count`.
+   - Enables verified in-line citations and page-exact retrieval.
 
 ---
 
-## 🚀 كيفية التجربة والاختبار
+## Module Files
 
-يمكنك اختبار هذا المسار مباشرة عبر المفكرة:
-`notebooks/01_ingestion_and_chunking.ipynb`
-أو عبر تنفيذ السكريبت:
-```bash
-python -m src.ingestion.pdf_loader
-```
+- `pdf_loader.py`: PDF loader with page-index tracking and text sanitization.
+- `chunker.py`: Section-aware recursive clinical text splitter.
+- `metadata_extractor.py`: Metadata extraction and validation utilities.

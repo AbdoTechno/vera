@@ -1,31 +1,24 @@
-# 📊 Evaluation Module (`src/evaluation/`)
+# Evaluation & Benchmark Metrics (`src/evaluation/`)
 
-مسؤول عن قياس أداء النظام وتوليد التقارير الكمية والنوعية للتأكد من استيفاء معايير التحكيم في الهاكاثون (Day 4 & Day 5).
-
----
-
-## 🎯 المقاييس المدعومة
-
-1. **مقاييس الاسترجاع (Retrieval Metrics)**:
-   - `Precision@K`: نسبة المقاطع المسترجعة ذات الصلة الحقيقية بالسؤال.
-   - `Recall@K`: نسبة تغطية الأدلة المطلوبة.
-   - `MRR (Mean Reciprocal Rank)`: رتبة أول دليل سريري صحيح في النتائج.
-2. **مقاييس التوليد وسلامة الإجابة (Generation & Safety Metrics)**:
-   - `Faithfulness (RAGAS)`: نسبة مطابقة الجمل المولدة للأدلة المسترجعة وخلوها من الهلوسة.
-   - `Answer Relevance`: صلة الإجابة المباشرة بالسؤال السريري المطروح.
-   - `Citation Accuracy`: دقة ووجود أرقام الصفحات والأقسام.
+This module provides quantitative and qualitative evaluation suites for evaluating retrieval quality, answer faithfulness, and clinical safety.
 
 ---
 
-## 📁 محتويات الوحدة
+## Evaluation Metrics
 
-- `retrieval_metrics.py`: حساب المقاييس الإحصائية للاسترجاع.
-- `ragas_evaluator.py`: التقييم الآلي للوفاء النصي والمطابقة.
-- `benchmark_runner.py`: تشغيل التقييم الشامل التلقائي على مجموعات الاختبار.
+1. **Retrieval Performance**:
+   - `Precision@K`: Proportion of top-K retrieved passages relevant to the clinical inquiry.
+   - `Recall@K`: Coverage of ground-truth guideline sections.
+   - `Mean Reciprocal Rank (MRR)`: Rank position of the primary clinical evidence chunk.
+
+2. **Generation & Grounding Quality**:
+   - `Faithfulness (RAGAS framework)`: Ratio of generated statements directly entailed by retrieved evidence.
+   - `Answer Relevance`: Semantic alignment between the clinical prompt and generated recommendations.
+   - `Citation Accuracy`: Verification of document titles and exact page indices.
 
 ---
 
-## 🚀 كيفية التجربة والاختبار
+## Module Files
 
-انظر المفكرة التفاعلية:
-`notebooks/05_safety_guardrails_evaluation.ipynb`
+- `metrics.py`: Statistical precision, recall, and citation verification functions.
+- `benchmark_runner.py`: Automated batch evaluation runner across test query suites.
