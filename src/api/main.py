@@ -28,12 +28,18 @@ async def _start_telegram_bot_background(rag_svc):
         logger.info(f"Telegram Webhook Registration: {res.get('description', 'OK')}")
         return None
     else:
+        enable_polling = os.getenv("ENABLE_TELEGRAM_POLLING", "false").lower() in ("true", "1", "yes")
+        if not enable_polling:
+            logger.info("Telegram background polling is disabled (set ENABLE_TELEGRAM_POLLING=true to enable).")
+            return None
+
         # Run resilient background polling loop inside FastAPI
         logger.info("Starting background Telegram Polling loop inside FastAPI...")
         try:
             await telegram_svc.remove_webhook()
         except Exception:
             pass
+
 
         async def polling_worker():
             offset = 0
