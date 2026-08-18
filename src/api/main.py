@@ -110,6 +110,12 @@ app.include_router(api_router)
 app.include_router(telegram_router)
 
 
+from fastapi import Response
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    return Response(status_code=204)
+
 @app.get("/", tags=["Root"])
 async def root():
     return {
@@ -122,3 +128,4 @@ async def root():
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("src.api.main:app", host="0.0.0.0", port=8000, reload=True)
+
