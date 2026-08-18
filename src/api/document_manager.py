@@ -41,9 +41,35 @@ def ingest_pdf_document(
     gemini_api_key: Optional[str] = None
 ) -> UploadResponse:
     """Dynamically validates, chunks, and embeds an uploaded medical PDF with AI Guardrail protection."""
-    logger.info(f"AI Guardrail: Validating uploaded document '{original_filename}'...")
-    
-    # 1. AI Guardrail Validation
+    # 1. Deduplication Check: Check if document already exists in registry
+    existing_doc = next(
+        (d for d in document_registry if d.get("filename", "").strip().lower() == original_filename.strip().lower()),
+        None
+    )
+    if existing_doc:
+        existing_doc_id = existing_doc.get("doc_id", "DOC_UNKNOWN")
+        matching_chunks = [
+            c for c in chunk_catalog
+            if c.get("doc_id") == existing_doc_id or c.get("doc_name") == original_filename
+        ]
+        logger.info(f"Deduplication: Document '{original_filename}' is already indexed (Doc ID: {existing_doc_id}, Chunks: {len(matching_chunks)}). Skipping re-indexing.")
+        return UploadResponse(
+            status="success",
+            message=f"Guideline '{original_filename}' is already indexed with {len(matching_chunks)} searchable vectors.",
+            filename=original_filename,
+            doc_id=existing_doc_id,
+            pages_processed=existing_doc.get("total_pages", 1),
+            chunks_indexed=len(matching_chunks),
+            doclink=f"{original_filename}#page=1",
+            decision="PASS",
+            domain=existing_doc.get("category", category),
+            document_type=existing_doc.get("document_type", "Clinical Guideline"),
+            confidence=1.0,
+            reason="Document is already validated and indexed in the knowledge base.",
+            warnings=[]
+        )
+
+    # 2. AI Guardrail Validation for new documents
     validation = validate_medical_document(file_path, gemini_api_key=gemini_api_key)
     
     if validation.decision == "REJECT":
@@ -64,9 +90,10 @@ def ingest_pdf_document(
             warnings=validation.warnings
         )
     
-    # 2. Proceed with Ingestion for PASS / REVIEW
+    # 3. Proceed with Ingestion for PASS / REVIEW
     doc_count = len(document_registry) + 1
     doc_id = f"DOC_{doc_count:03d}"
+
     
     # Parse PDF pages
     loader = PDFLoader()

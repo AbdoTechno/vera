@@ -41,6 +41,34 @@ class VERAClinicalService:
             strictness_threshold=CONFIG.safety.nli_threshold
         )
         self.document_registry = load_document_registry()
+        self._hydrate_vector_store_if_needed()
+
+    def _hydrate_vector_store_if_needed(self):
+        """Ensures ChromaDB vector store contains all pre-loaded guideline vectors on server boot."""
+        try:
+            if self.vector_store.collection:
+                count = self.vector_store.collection.count()
+                if count == 0 and self.chunk_catalog:
+                    logger.info(f"Hydrating ChromaDB vector store with {len(self.chunk_catalog)} catalog chunks...")
+                    from src.ingestion.chunker import Chunk
+                    chunks = [
+                        Chunk(
+                            chunk_id=c.get("chunk_id", f"chk_{i:04d}"),
+                            doc_id=c.get("doc_id", "DOC_001"),
+                            doc_name=c.get("doc_name", ""),
+                            section=c.get("section", "General"),
+                            page_number=c.get("page_number", 1),
+                            content=c.get("content", ""),
+                            token_count=c.get("token_count", len(c.get("content", "").split()))
+                        )
+                        for i, c in enumerate(self.chunk_catalog)
+                    ]
+                    self.vector_store.index_chunks(chunks)
+                    logger.success(f"ChromaDB hydrated successfully with {self.vector_store.collection.count()} vectors.")
+
+        except Exception as e:
+            logger.warning(f"ChromaDB hydration skipped or encountered non-critical issue: {e}")
+
 
     def process_clinical_query(
         self,
