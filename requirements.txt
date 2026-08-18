@@ -63,6 +63,8 @@ python-multipart>=0.0.9
 loguru>=0.7.2
 
 # Web UI & Testing
+gradio>=4.30.0
 streamlit>=1.35.0
 pytest>=8.2.0
 pytest-asyncio>=0.23.0
+
