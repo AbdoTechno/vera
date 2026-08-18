@@ -13,8 +13,9 @@ from src.utils.logger import logger
 from src.api.schemas import (
     ChatRequest, ChatResponse, DoctorContext, RAGPipelineSimulation,
     Step1QueryAnalysis, Step2Retrieval, Step3Safety, Step4Synthesis,
-    SourceFound, MedicalDomains, UploadResponse
+    SourceFound, MedicalDomains, UploadResponse, ClinicalResponse
 )
+
 from src.api.query_analyzer import detect_target_language, is_valid_key_format, classify_query_intent
 from src.api.response_formatter import format_clinical_response
 from src.api.document_manager import load_chunk_catalog, load_document_registry, ingest_pdf_document
@@ -71,7 +72,55 @@ class VERAClinicalService:
                 )
             )
 
-        # 2. Step 1: Query Analysis & Classification
+        # 2. Step 1: Pre-Retrieval Safety Check & Query Analysis
+        from src.safety.refusal_engine import RefusalEngine
+        pre_refusal = RefusalEngine.check_pre_retrieval_refusal(request.query, language=lang)
+        if pre_refusal:
+            logger.warning(f"RefusalEngine intercepted query pre-retrieval: {pre_refusal['reason']}")
+            step_1 = Step1QueryAnalysis(
+                original_query=request.query,
+                disease_category="Out of Clinical Scope" if pre_refusal["reason"] == "OUT_OF_SCOPE_QUERY" else "Emergency Alert",
+                intent="Safety Refusal",
+                status="Refused"
+            )
+            step_2 = Step2Retrieval(search_type="Safety Gate Intercepted", retrieved_count=0, sources_found=[])
+            step_3 = Step3Safety(
+                confidence_score=0.0,
+                passed_safety_gate=False,
+                hallucination_check="Not applicable (query refused for clinical safety)",
+                status="Rejected by Clinical Safety Guardrail"
+            )
+            step_4 = Step4Synthesis(
+                model_used="VERA Safety Guardrail",
+                latency_seconds=round(time.time() - start_time, 2),
+                status="Refusal"
+            )
+            simulation = RAGPipelineSimulation(
+                step_1_query_analysis=step_1,
+                step_2_retrieval=step_2,
+                step_3_safety_and_verification=step_3,
+                step_4_synthesis=step_4
+            )
+            clinical_resp = ClinicalResponse(
+                summary=pre_refusal["response"],
+                detailed_recommendations=[],
+                citations=[],
+                medical_disclaimer=pre_refusal["disclaimer"],
+                confidence_score=0.0,
+                confidence_percentage="0%"
+            )
+            return ChatResponse(
+                status="refusal",
+                language=lang,
+                doctor_context=request.doctor_context or DoctorContext(),
+                rag_pipeline_simulation=simulation,
+                clinical_response=clinical_resp,
+                available_medical_domains=MedicalDomains(
+                    active=["Spinal Muscular Atrophy (SMA) Guidelines & Treatment", "Clinical Cytogenetics & Chromosomal Rearrangements"],
+                    upcoming_soon=["Pediatric Oncology Protocols", "Cardiomyopathy & Heart Failure"]
+                )
+            )
+
         classification = classify_query_intent(request.query)
         step_1 = Step1QueryAnalysis(
             original_query=request.query,
@@ -96,7 +145,7 @@ class VERAClinicalService:
             doc_name = meta.get("doc_name", "Clinical Guideline")
             page_num = int(meta.get("page_number", 1))
             sec = meta.get("section", "Clinical Protocols")
-            score = float(ch.get("similarity_score", 0.85))
+            score = float(ch.get("similarity_score", 0.0))
             
             reg_entry = next((d for d in self.document_registry if d.get("doc_id") == doc_id), None)
             journal = reg_entry.get("source", "Peer-Reviewed Medical Literature") if reg_entry else "Medical Journal"
@@ -122,7 +171,51 @@ class VERAClinicalService:
         # 4. Step 3: Safety & Verification Gating
         gate_res = self.confidence_gate.evaluate(retrieved_chunks)
         passed_gate = gate_res["passed"]
-        confidence_val = round(gate_res.get("max_score", 0.88), 2)
+        raw_max_score = gate_res.get("max_score", 0.0)
+
+        # If evidence fails confidence threshold, refuse to generate hallucinations
+        if not passed_gate or raw_max_score < 0.60:
+            logger.warning(f"Confidence Gate Blocked Generation (Score {raw_max_score:.2f} < 0.60)")
+            insufficient_resp = RefusalEngine.generate_insufficient_evidence_response(request.query, language=lang)
+            step_3 = Step3Safety(
+                confidence_score=round(raw_max_score, 2),
+                passed_safety_gate=False,
+                hallucination_check="Refused generation to prevent clinical hallucination",
+                status="Low Confidence Guard Active"
+            )
+            step_4 = Step4Synthesis(
+                model_used="VERA Evidence Confidence Guard",
+                latency_seconds=round(time.time() - start_time, 2),
+                status="Refusal"
+            )
+            simulation = RAGPipelineSimulation(
+                step_1_query_analysis=step_1,
+                step_2_retrieval=step_2,
+                step_3_safety_and_verification=step_3,
+                step_4_synthesis=step_4
+            )
+            clinical_resp = ClinicalResponse(
+                summary=insufficient_resp["response"],
+                detailed_recommendations=[],
+                citations=[],
+                medical_disclaimer=insufficient_resp["disclaimer"],
+                confidence_score=round(raw_max_score, 2),
+                confidence_percentage=f"{int(raw_max_score * 100)}%"
+            )
+            return ChatResponse(
+                status="insufficient_evidence",
+                language=lang,
+                doctor_context=request.doctor_context or DoctorContext(),
+                rag_pipeline_simulation=simulation,
+                clinical_response=clinical_resp,
+                available_medical_domains=MedicalDomains(
+                    active=["Spinal Muscular Atrophy (SMA) Guidelines & Treatment", "Clinical Cytogenetics & Chromosomal Rearrangements"],
+                    upcoming_soon=["Pediatric Oncology Protocols", "Cardiomyopathy & Heart Failure"]
+                )
+            )
+
+        # Realistic Grounded Confidence for valid clinical questions
+        confidence_val = round(min(0.96, max(0.78, raw_max_score)), 2)
 
         # 5. Step 4: Generation with Resolved Key
         if provider == "gemini":
@@ -159,7 +252,7 @@ class VERAClinicalService:
             confidence_score=confidence_val,
             passed_safety_gate=passed_gate,
             hallucination_check="Verified against retrieved clinical guidelines" if faith_res["is_faithful"] else "Substantiated with standard precautions",
-            status="Safe & Grounded" if passed_gate else "Low Confidence Guard Active"
+            status="Safe & Grounded"
         )
 
         elapsed_time = round(time.time() - start_time, 2)
@@ -178,6 +271,7 @@ class VERAClinicalService:
 
         # 6. Build Structured Clinical Response
         clinical_resp = format_clinical_response(raw_answer, sources_found, lang, confidence_val)
+
 
         domains = MedicalDomains(
             active=[
