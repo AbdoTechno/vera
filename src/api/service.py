@@ -214,8 +214,9 @@ class VERAClinicalService:
                 )
             )
 
-        # Realistic Grounded Confidence for valid clinical questions
-        confidence_val = round(min(0.96, max(0.78, raw_max_score)), 2)
+        # Dynamic Grounded Confidence directly proportional to retrieved evidence score
+        confidence_val = round(min(0.98, raw_max_score), 2)
+
 
         # 5. Step 4: Generation with Resolved Key
         if provider == "gemini":

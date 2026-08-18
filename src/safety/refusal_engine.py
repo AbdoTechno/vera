@@ -5,10 +5,13 @@ class RefusalEngine:
     """Manages graceful refusal responses for out-of-scope, emergency, or unsupported queries."""
 
     OUT_OF_SCOPE_TOPICS = [
-        r'\b(?:how to cook|weather|politics|sports|stock market|recipe|coffee|tea|football|messi|ronaldo|joke)\b',
-        r'\b(?:covid|diabetes|alzheimer|cancer|appendicitis|insulin)\b',
-        r'(?:قهوة|طريقة عمل|طبخ|أكل|وصفة|طقس|مباراة|كرة قدم|رياضة|سياسة|نكتة|أغنية|سكر|سكري|أنسولين)'
+        r'\b(?:how to cook|recipe for|weather forecast|politics news|stock market prediction|tell me a joke)\b',
+        r'\b(?:who is messi|who is ronaldo|football match result)\b',
+        r'\b(?:diabetes|insulin|alzheimer|appendicitis)\b',
+        r'(?:طريقة تحضير|طريقة عمل كيك|وصفة طبخ|أخبار الطقس|نتيجة مباراة|كرة قدم|نكتة|أغنية|سكر|سكري|أنسولين)'
     ]
+
+
 
 
     EMERGENCY_KEYWORDS = [
