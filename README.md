@@ -185,6 +185,84 @@ Processes clinical inquiries, executes hybrid retrieval and safety verification,
 }
 ```
 
+**Response Body (`ChatResponse` JSON):**
+```json
+{
+  "status": "success",
+  "language": "en",
+  "doctor_context": {
+    "specialty": "Pediatric Neurology",
+    "experience_level": "Consultant",
+    "notes": "Evaluating loading schedule"
+  },
+  "rag_pipeline_simulation": {
+    "step_1_query_analysis": {
+      "original_query": "What are the recommended loading doses for Nusinersen in SMA?",
+      "disease_category": "Spinal Muscular Atrophy (SMA)",
+      "intent": "Therapeutic Dosing & Protocol",
+      "status": "Completed"
+    },
+    "step_2_retrieval": {
+      "search_type": "Hybrid (Dense Vector + BM25 Lexical)",
+      "retrieved_count": 4,
+      "sources_found": [
+        {
+          "doc_id": "DOC_001",
+          "doc_title": "Spinal Muscular Atrophy: Update in Best Practices Recommendations for Treatment Considerations",
+          "journal": "Clinical Pediatrics",
+          "page_number": 4,
+          "section": "Dosing and Administration",
+          "similarity_score": 0.95,
+          "doclink": "ClinPediatr_2023_SMA_Treatment_Best_Practices.pdf#page=4"
+        }
+      ]
+    },
+    "step_3_safety_and_verification": {
+      "confidence_score": 0.95,
+      "passed_safety_gate": true,
+      "hallucination_check": "Verified against retrieved clinical guidelines",
+      "status": "Safe & Grounded"
+    },
+    "step_4_synthesis": {
+      "model_used": "Gemini (models/gemini-3.1-flash-lite)",
+      "latency_seconds": 0.42,
+      "status": "Generated"
+    }
+  },
+  "clinical_response": {
+    "summary": "Clinical guidelines recommend initiating Nusinersen (Spinraza) with a structured loading regimen followed by regular maintenance doses administered via intrathecal injection.",
+    "detailed_recommendations": [
+      "Loading Phase: Administer 4 loading doses (12 mg / 5 mL each). The first 3 doses are given on Days 0, 14, and 28, followed by the 4th dose on Day 63 [ClinPediatr_2023_SMA_Treatment_Best_Practices.pdf#page=4].",
+      "Maintenance Phase: Administer maintenance doses of 12 mg once every 4 months thereafter [ClinPediatr_2023_SMA_Treatment_Best_Practices.pdf#page=4].",
+      "Pre-Treatment Monitoring: Conduct baseline laboratory evaluation including platelet counts, coagulation profile, and quantitative spot urine protein testing prior to each intrathecal administration."
+    ],
+    "citations": [
+      {
+        "citation_id": 1,
+        "source": "Spinal Muscular Atrophy: Update in Best Practices Recommendations for Treatment Considerations",
+        "page": 4,
+        "section": "Dosing and Administration",
+        "doclink": "ClinPediatr_2023_SMA_Treatment_Best_Practices.pdf#page=4"
+      }
+    ],
+    "medical_disclaimer": "VERA is an evidence-grounded research assistant designed for healthcare professionals and does not replace autonomous clinical diagnosis or medical practitioner judgment.",
+    "confidence_score": 0.95,
+    "confidence_percentage": "95%"
+  },
+  "available_medical_domains": {
+    "active": [
+      "Spinal Muscular Atrophy (SMA) Guidelines & Treatment",
+      "Clinical Cytogenetics & Chromosomal Rearrangements"
+    ],
+    "upcoming_soon": [
+      "Pediatric Oncology Protocols",
+      "Cardiomyopathy & Heart Failure"
+    ]
+  }
+}
+```
+
+
 ### 2. Ingest Institutional Guideline with AI Guardrail
 `POST /api/v1/upload-document`
 
