@@ -1,5 +1,16 @@
+---
+title: VERA Clinical Intelligence
+emoji: 🩺
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # VERA - Verified Evidence Retrieval Assistant
 ### Evidence-Grounded Clinical Decision Support Platform
+
 
 VERA is an evidence-grounded Clinical Decision Support (CDS) Retrieval-Augmented Generation (RAG) platform designed for physicians, geneticists, and clinical researchers.
 
