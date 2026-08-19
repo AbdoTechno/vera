@@ -259,16 +259,27 @@ class VERAClinicalService:
         )
         raw_answer = gen_output.get("answer", "")
 
-        
+        # Check if the generated answer indicates that evidence does not contain the information
+        insufficient_phrases = [
+            "does not contain", "does not address", "not mention", "no information",
+            "insufficient evidence", "لا تحتوي الأدلة", "لم تذكر الأدلة", "غير متوفرة في الأدلة",
+            "لا تتوفر معلومات"
+        ]
+        is_evidence_missing = any(p in raw_answer.lower() for p in insufficient_phrases)
+        if is_evidence_missing:
+            confidence_val = 0.0
+
+
         # Verify faithfulness
         faith_res = self.hallucination_checker.verify_faithfulness(raw_answer, retrieved_chunks)
         
         step_3 = Step3Safety(
             confidence_score=confidence_val,
-            passed_safety_gate=passed_gate,
-            hallucination_check="Verified against retrieved clinical guidelines" if faith_res["is_faithful"] else "Substantiated with standard precautions",
-            status="Safe & Grounded"
+            passed_safety_gate=passed_gate and not is_evidence_missing,
+            hallucination_check="Insufficient evidence in retrieved guidelines" if is_evidence_missing else ("Verified against retrieved clinical guidelines" if faith_res["is_faithful"] else "Substantiated with standard precautions"),
+            status="Insufficient Evidence in Guidelines" if is_evidence_missing else "Safe & Grounded"
         )
+
 
         elapsed_time = round(time.time() - start_time, 2)
         step_4 = Step4Synthesis(

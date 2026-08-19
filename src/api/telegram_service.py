@@ -30,6 +30,8 @@ class TelegramService:
         self.base_url = f"https://api.telegram.org/bot{self.bot_token}" if self.bot_token else ""
         self.keys_file = Path("./data/telegram_user_keys.json")
         self.user_keys: Dict[str, str] = self._load_user_keys()
+        self.roles_file = Path("./data/telegram_user_roles.json")
+        self.user_roles: Dict[str, str] = self._load_user_roles()
 
     def _load_user_keys(self) -> Dict[str, str]:
         """Loads persistent per-user Telegram Gemini API keys."""
@@ -50,6 +52,34 @@ class TelegramService:
         except Exception as e:
             logger.error(f"Error saving telegram_user_keys: {e}")
 
+    def _load_user_roles(self) -> Dict[str, str]:
+        """Loads persistent per-user role settings."""
+        if self.roles_file.exists():
+            try:
+                with open(self.roles_file, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception as e:
+                logger.error(f"Error loading telegram_user_roles: {e}")
+        return {}
+
+    def _save_user_roles(self):
+        """Persists per-user roles to disk."""
+        try:
+            self.roles_file.parent.mkdir(parents=True, exist_ok=True)
+            with open(self.roles_file, "w", encoding="utf-8") as f:
+                json.dump(self.user_roles, f, indent=2)
+        except Exception as e:
+            logger.error(f"Error saving telegram_user_roles: {e}")
+
+    def get_user_role(self, chat_id: int | str) -> str:
+        """Gets user role: 'Doctor' (default) or 'General User'."""
+        return self.user_roles.get(str(chat_id), "Doctor")
+
+    def set_user_role(self, chat_id: int | str, role: str):
+        """Sets and persists user role."""
+        self.user_roles[str(chat_id)] = role
+        self._save_user_roles()
+
     def get_user_key(self, chat_id: int | str) -> Optional[str]:
         """Gets API key configured specifically by this Telegram user or system default."""
         user_key = self.user_keys.get(str(chat_id))
@@ -57,6 +87,7 @@ class TelegramService:
             return user_key.strip()
         system_key = os.getenv("GEMINI_API_KEY", "").strip()
         return system_key if len(system_key) >= 15 else None
+
 
 
     def _mask_token(self, text: str) -> str:
@@ -268,12 +299,48 @@ class TelegramService:
             )
             return {"status": "handled", "action": "key_auto_saved"}
 
-        # 5. Handle /start and /help commands
+        # 5. Handle /role, /doctor, /user commands
+        if text == "/doctor":
+            self.set_user_role(chat_id, "Doctor")
+            await self.send_message(
+                chat_id,
+                "👨‍⚕️ <b>تم تعيين صفتك كـ (طبيب / ممارس صحي - Doctor) بنجاح!</b> 🩺\n\n"
+                "ستتضمن الإجابات المصطلحات السريرية الدقيقة وتفاصيل الجرعات والبروتوكولات التخصصية."
+            )
+            return {"status": "handled", "action": "role_set_doctor"}
+
+        if text == "/user" or text == "/patient":
+            self.set_user_role(chat_id, "General User")
+            await self.send_message(
+                chat_id,
+                "👤 <b>تم تعيين صفتك كـ (مستخدم عام / مريض - General User) بنجاح!</b>\n\n"
+                "ستكون الإجابات بلغة مبسطة ومباشرة مع شروحات سهلة وتوجيهات السلامة العامة."
+            )
+            return {"status": "handled", "action": "role_set_user"}
+
+        if text == "/role":
+            curr_role = self.get_user_role(chat_id)
+            role_title = "👨‍⚕️ طبيب (Doctor)" if curr_role == "Doctor" else "👤 مستخدم عام (General User)"
+            await self.send_message(
+                chat_id,
+                f"🏷️ <b>دورك الحالي:</b> {role_title}\n\n"
+                "<b>لتغيير الدور:</b>\n"
+                "• أرسل <code>/doctor</code> ➔ للتحويل إلى وضع الطبيب المتخصص\n"
+                "• أرسل <code>/user</code> ➔ للتحويل إلى وضع المستخدم العام والمريض"
+            )
+            return {"status": "handled", "action": "role_view"}
+
+        # 6. Handle /start and /help commands
         if text.startswith("/start"):
+            curr_role = self.get_user_role(chat_id)
+            role_str = "👨‍⚕️ طبيب" if curr_role == "Doctor" else "👤 مستخدم عام"
             welcome_msg = get_welcome_message()
+            welcome_msg += (
+                f"\n\n🏷️ <b>الصفة المفعلة:</b> {role_str} (للتبديل اكتب <code>/role</code>)\n"
+            )
             if not self.get_user_key(chat_id):
                 welcome_msg += (
-                    "\n\n🔑 <b>تفعيل البوت (API Key):</b>\n"
+                    "\n🔑 <b>تفعيل البوت (API Key):</b>\n"
                     "للبدء، يرجى إرسال مفتاح <b>Gemini API Key</b> الخاص بك مباشرة في المحادثة أو كتابة:\n"
                     "<code>/setkey YOUR_GEMINI_KEY</code>\n\n"
                     "<i>(احصل على مفتاحك مجاناً من aistudio.google.com)</i>"
@@ -284,20 +351,23 @@ class TelegramService:
         if text.startswith("/help"):
             help_msg = get_help_message()
             help_msg += (
-                "\n\n<b>إدارة المفاتيح:</b>\n"
-                "/setkey &lt;KEY&gt; - حفظ أو تحديث مفتاح Gemini الخاص بك\n"
+                "\n\n<b>إدارة الحساب والأدوار:</b>\n"
+                "/doctor - التبديل لوضع الطبيب المتخصص 👨‍⚕️\n"
+                "/user - التبديل لوضع المستخدم العام 👤\n"
+                "/role - عرض دورك الحالي\n"
+                "/setkey &lt;KEY&gt; - حفظ أو تحديث مفتاح Gemini الخاص بك 🔑\n"
                 "/mykey - عرض حالة المفتاح\n"
-                "/delkey - حذف المفتاح"
+                "/delkey - حذف المفتاح 🗑️"
             )
             await self.send_message(chat_id, help_msg)
             return {"status": "handled", "action": "help"}
 
-        # 6. Check if user has an active Gemini key
+        # 7. Check if user has an active Gemini key
         effective_user_key = self.get_user_key(chat_id)
         if not effective_user_key:
             await self.send_message(
                 chat_id,
-                "👋 <b>مرحباً دكتور!</b>\n\n"
+                "👋 <b>مرحباً بك!</b>\n\n"
                 "🔑 <b>لتفعيل استفسارات VERA الطبية:</b>\n"
                 "يرجى تزويد البوت بمفتاح Google Gemini API Key الخاص بك.\n\n"
                 "📌 <b>طريقة التفعيل السريعة:</b>\n"
@@ -307,20 +377,23 @@ class TelegramService:
             )
             return {"status": "handled", "action": "key_required_prompt"}
 
-        # 7. Handle Clinical Inquiries via VERA RAG
+        # 8. Handle Clinical Inquiries via VERA RAG
         try:
             await self.send_chat_action(chat_id, "typing")
+            curr_role = self.get_user_role(chat_id)
 
             chat_request = ChatRequest(
                 query=text,
                 language="ar" if any('\u0600' <= c <= '\u06FF' for c in text) else "en",
                 api_key=effective_user_key,
+                user_role=curr_role,
                 doctor_context=DoctorContext(
                     name=username,
-                    specialty="Clinical User (Telegram)",
+                    specialty="Clinical Specialist" if curr_role == "Doctor" else "General User",
                     notes="Telegram Bot Inquiry"
                 )
             )
+
 
             chat_response: ChatResponse = rag_service.process_clinical_query(chat_request)
             formatted_text = format_clinical_response_for_telegram(chat_response)
