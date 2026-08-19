@@ -12,8 +12,10 @@ class ChatRequest(BaseModel):
     doctor_context: Optional[DoctorContext] = Field(default_factory=DoctorContext)
     api_key: Optional[str] = Field(default=None, description="Optional override for Gemini/OpenAI API key")
     provider: Optional[str] = Field(default="gemini", description="LLM provider: 'gemini' or 'openai'")
+    user_role: Optional[str] = Field(default="Doctor", description="User role: 'Doctor' or 'General User'")
     doc_id: Optional[str] = Field(default=None, description="Optional document ID to scope inquiry strictly to a single paper/guideline (Private Document Chat)")
     doc_name: Optional[str] = Field(default=None, description="Optional filename to scope inquiry strictly to a single paper/guideline")
+
 
 
 class SourceFound(BaseModel):

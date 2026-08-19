@@ -110,8 +110,9 @@ class TelegramService:
                     # If HTML parsing failed due to unexpected tag, retry as plain text
                     if resp.status_code != 200 and parse_mode == "HTML":
                         logger.warning(f"Telegram HTML send failed ({resp.status_code}), retrying without parse_mode.")
-                        payload["parse_mode"] = None
+                        payload.pop("parse_mode", None)
                         resp = await client.post(url, json=payload)
+
 
                     if resp.status_code != 200:
                         all_success = False

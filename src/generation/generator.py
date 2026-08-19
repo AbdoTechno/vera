@@ -70,7 +70,15 @@ class ClinicalGenerator:
             except ImportError:
                 logger.warning("openai package not installed.")
 
-    def generate_response(self, query: str, retrieved_chunks: List[Dict[str, Any]], language: str = "en") -> Dict[str, Any]:
+    def generate_response(
+        self,
+        query: str,
+        retrieved_chunks: List[Dict[str, Any]],
+        language: str = "en",
+        user_role: str = "Doctor",
+        risk_level: str = "LOW",
+        confidence: str = "HIGH"
+    ) -> Dict[str, Any]:
         """Generates evidence-grounded response with transparent citations and requested language."""
         if not retrieved_chunks:
             return {
@@ -82,9 +90,21 @@ class ClinicalGenerator:
 
         context_block = CitationFormatter.format_context_block(retrieved_chunks)
         sys_prompt = CLINICAL_SYSTEM_PROMPT_EN
-        user_prompt = STRICT_GROUNDING_PROMPT_TEMPLATE_EN.format(retrieved_context=context_block, query=query)
+
+        try:
+            user_prompt = STRICT_GROUNDING_PROMPT_TEMPLATE_EN.format(
+                user_role=user_role,
+                risk_level=risk_level,
+                confidence=confidence,
+                retrieved_context=context_block,
+                query=query
+            )
+        except KeyError:
+            # Safe fallback if template variables mismatch
+            user_prompt = f"VERIFIED USER ROLE:\n{user_role}\n\nRISK LEVEL:\n{risk_level}\n\nRETRIEVAL CONFIDENCE:\n{confidence}\n\nRETRIEVED EVIDENCE:\n{context_block}\n\nUSER QUERY:\n{query}"
 
         response_text = ""
+
 
 
 

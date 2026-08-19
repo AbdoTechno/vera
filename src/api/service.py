@@ -243,8 +243,22 @@ class VERAClinicalService:
         if request.doctor_context and request.doctor_context.notes:
             custom_query = f"{request.query} (Physician Context: Specialty: {request.doctor_context.specialty}, Focus: {request.doctor_context.notes})"
 
-        gen_output = generator.generate_response(custom_query, retrieved_chunks, language=lang)
+        # Determine verified user role
+        user_role = getattr(request, "user_role", None) or "Doctor"
+        if request.doctor_context and request.doctor_context.specialty and request.doctor_context.specialty != "General Medicine":
+            user_role = f"Doctor ({request.doctor_context.specialty})"
+
+
+        gen_output = generator.generate_response(
+            query=custom_query,
+            retrieved_chunks=retrieved_chunks,
+            language=lang,
+            user_role=user_role,
+            risk_level="LOW" if passed_gate else "HIGH",
+            confidence=f"{int(confidence_val * 100)}%"
+        )
         raw_answer = gen_output.get("answer", "")
+
         
         # Verify faithfulness
         faith_res = self.hallucination_checker.verify_faithfulness(raw_answer, retrieved_chunks)
