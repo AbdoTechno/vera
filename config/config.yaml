@@ -40,11 +40,12 @@ vector_store:
   distance_metric: "cosine"          # Options: cosine, l2, ip
 
 retrieval:
-  top_k: 4
+  top_k: 5
   search_type: "hybrid"              # Options: dense, hybrid, bm25
   similarity_threshold: 0.60         # Minimum cosine similarity to pass to generator
-  bm25_weight: 0.3                   # Weight for BM25 in hybrid search
-  dense_weight: 0.7                  # Weight for Dense vector in hybrid search
+  bm25_weight: 0.4                   # Weight for BM25 in hybrid search
+  dense_weight: 0.6                  # Weight for Dense vector in hybrid search
+
   rerank_enabled: false
   reranker_model: "cross-encoder/ms-marco-MiniLM-L-6-v2"
 

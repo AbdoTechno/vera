@@ -83,19 +83,21 @@ class HybridRetriever:
 
         # Dense ranking
         for rank, item in enumerate(dense_results):
-            cid = f"{item['metadata'].get('doc_id')}_{item['metadata'].get('page_number')}_{item['content'][:30]}"
+            meta = item.get("metadata", {})
+            cid = meta.get("chunk_id") or f"{meta.get('doc_id')}_{meta.get('page_number')}_{hash(item.get('content', ''))}"
             chunk_map[cid] = item
             rrf_scores[cid] = rrf_scores.get(cid, 0.0) + (self.dense_weight / (60 + rank + 1))
 
         # BM25 ranking
         for rank, idx in enumerate(bm25_ranked_indices):
             chunk = self.chunks_corpus[idx]
-            cid = f"{chunk.get('doc_id')}_{chunk.get('page_number')}_{chunk.get('content')[:30]}"
+            cid = chunk.get("chunk_id") or f"{chunk.get('doc_id')}_{chunk.get('page_number')}_{hash(chunk.get('content', ''))}"
             if cid not in chunk_map:
                 max_score = max(bm25_scores) if max(bm25_scores) > 0 else 1.0
                 chunk_map[cid] = {
                     "content": chunk.get("content"),
                     "metadata": {
+                        "chunk_id": chunk.get("chunk_id"),
                         "doc_id": chunk.get("doc_id"),
                         "doc_name": chunk.get("doc_name"),
                         "section": chunk.get("section"),
@@ -103,6 +105,7 @@ class HybridRetriever:
                     },
                     "similarity_score": round(float(bm25_scores[idx] / max_score), 4)
                 }
+
             rrf_scores[cid] = rrf_scores.get(cid, 0.0) + (self.bm25_weight / (60 + rank + 1))
 
         # Sort by combined RRF score

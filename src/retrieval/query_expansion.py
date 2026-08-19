@@ -5,27 +5,34 @@ class MedicalQueryExpander:
     """Expands clinical queries with synonyms, standard gene symbols, and drug brand/generic names."""
 
     SYNONYM_MAP: Dict[str, List[str]] = {
-        "sma": ["Spinal Muscular Atrophy", "SMN1 deficiency", "5q SMA"],
-        "spinraza": ["nusinersen", "antisense oligonucleotide", "intrathecal nusinersen"],
-        "zolgensma": ["onasemnogene abeparvovec", "AAV9 gene therapy", "AVXS-101"],
-        "evrysdi": ["risdiplam", "oral SMN2 splicing modifier"],
-        "smn1": ["Survival of Motor Neuron 1", "telomeric SMN"],
-        "smn2": ["Survival of Motor Neuron 2", "centromeric SMN", "SMN2 copy number"],
-        "long-read": ["long-read sequencing", "PacBio HiFi", "Oxford Nanopore ONT", "structural variants"],
-        "rearrangements": ["chromosomal rearrangements", "balanced translocations", "inversions", "complex SVs"],
+        "sma": ["Spinal Muscular Atrophy", "SMN1", "5q SMA"],
+        "spinraza": ["nusinersen", "antisense", "intrathecal"],
+        "zolgensma": ["onasemnogene", "abeparvovec", "AAV9", "AVXS-101"],
+        "evrysdi": ["risdiplam", "splicing"],
+        "smn1": ["Survival Motor Neuron 1"],
+        "smn2": ["Survival Motor Neuron 2", "copy number"],
+        "long-read": ["PacBio", "HiFi", "Nanopore", "ONT", "structural variants"],
+        "rearrangements": ["translocations", "inversions", "SVs"],
+        "coffee": ["caffeine", "caffeine-rich", "lifestyle"],
+        "coffe": ["coffee", "caffeine", "lifestyle"],
+        "caffeine": ["coffee", "caffeine-rich"],
+        "preasure": ["pressure"],
     }
 
     ARABIC_MAP: Dict[str, List[str]] = {
-        "ضمور العضلات": ["Spinal Muscular Atrophy", "SMA", "SMN1"],
-        "نوسينيرسين": ["nusinersen", "Spinraza", "antisense oligonucleotide"],
-        "زولجينسما": ["onasemnogene abeparvovec", "Zolgensma", "gene therapy"],
+        "ضمور العضلات": ["SMA", "SMN1"],
+        "نوسينيرسين": ["nusinersen", "Spinraza"],
+        "زولجينسما": ["onasemnogene", "abeparvovec", "Zolgensma"],
         "ريسديبلام": ["risdiplam", "Evrysdi"],
-        "بدء": ["treatment initiation", "eligibility criteria"],
-        "علاج": ["treatment", "therapy", "management recommendations"],
-        "جرعة": ["dosing", "dose", "loading doses", "maintenance"],
-        "تشخيص": ["diagnosis", "screening", "genetic testing", "exome"],
-        "كروموسوم": ["chromosomal rearrangements", "structural variants"],
-        "طفرة": ["mutation", "variant", "deletion", "duplication"]
+        "بدء": ["initiation", "eligibility"],
+        "علاج": ["treatment", "therapy"],
+        "جرعة": ["dosing", "loading", "maintenance"],
+        "تشخيص": ["diagnosis", "screening"],
+        "كروموسوم": ["chromosomal", "rearrangements"],
+        "طفرة": ["mutation", "variant", "deletion"],
+        "ضغط الدم": ["hypertension", "blood pressure"],
+        "القهوة": ["coffee", "caffeine"],
+        "كافيين": ["caffeine", "coffee"],
     }
 
     def expand(self, query: str) -> str:
@@ -36,16 +43,20 @@ class MedicalQueryExpander:
         # Check English synonyms
         for key, terms in self.SYNONYM_MAP.items():
             if re.search(r'\b' + re.escape(key) + r'\b', query_lower):
-                expansions.extend(terms[:2])
+                expansions.extend(terms)
 
         # Check Arabic clinical terms
         for ar_key, terms in self.ARABIC_MAP.items():
             if ar_key in query:
-                expansions.extend(terms[:2])
+                expansions.extend(terms)
 
         if expansions:
-            unique_expansions = list(dict.fromkeys(expansions))
-            expanded_query = f"{query} {' '.join(unique_expansions)}"
-            return expanded_query
+            # Deduplicate added tokens so we do not inflate generic words
+            existing_tokens = set(query_lower.split())
+            new_tokens = [t for term in expansions for t in term.split() if t.lower() not in existing_tokens]
+            unique_new = list(dict.fromkeys(new_tokens))
+            if unique_new:
+                return f"{query} {' '.join(unique_new)}"
         return query
+
 
