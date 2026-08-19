@@ -47,10 +47,42 @@ class VectorStoreManager:
             )
             count = self.collection.count() if hasattr(self.collection, "count") else 0
             logger.info(f"VectorStoreManager connected to ChromaDB collection: '{self.collection_name}' (Current count: {count})")
+            
+            if count == 0:
+                self._auto_hydrate_catalog()
         except ImportError:
             logger.warning("chromadb not installed. VectorStoreManager will use in-memory store fallback.")
         except (Exception, BaseException) as e:
             logger.error(f"Vector store init error: {e}")
+
+    def _auto_hydrate_catalog(self):
+        """Loads and indexes pre-processed chunks if collection is empty."""
+        catalog_path = Path("./data/processed/chunk_catalog.json")
+        if catalog_path.exists():
+            try:
+                import json
+                with open(catalog_path, "r", encoding="utf-8") as f:
+                    raw_chunks = json.load(f)
+                if raw_chunks:
+                    logger.info(f"Auto-hydrating vector store with {len(raw_chunks)} chunks from {catalog_path}...")
+                    chunks = [
+                        Chunk(
+                            chunk_id=c.get("chunk_id", f"chk_{i}"),
+                            doc_id=c.get("doc_id", "DOC_UNKNOWN"),
+                            doc_name=c.get("doc_name", "doc.pdf"),
+                            content=c.get("content", ""),
+                            section=c.get("section", "General"),
+                            page_number=c.get("page_number", 1),
+                            token_count=len(c.get("content", "").split()),
+                            metadata=c.get("metadata", {})
+                        )
+                        for i, c in enumerate(raw_chunks)
+                    ]
+                    self.index_chunks(chunks)
+                    logger.info(f"Successfully auto-hydrated vector store (Count: {self.collection.count()})")
+            except Exception as e:
+                logger.warning(f"Auto-hydration failed: {e}")
+
 
 
 
