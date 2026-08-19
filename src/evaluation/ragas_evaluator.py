@@ -1,7 +1,11 @@
 from typing import List, Dict, Any
 
 class SimpleRAGEvaluator:
-    """Evaluates RAG pipeline outputs for faithfulness, answer relevance, and citation integrity."""
+    """RAGAS: Evaluates RAG pipeline outputs for faithfulness, answer relevance, and citation integrity.
+     - checks if the retrieved chunks are relevant to the query.
+     - checks if the generated answer is correct, grounded in those chunks, and not hallucinated.
+     - labels claims in the answer as supported (found in retrieved text) or unsupported (not backed by evidence).
+     - gives you scores that show how good your RAG pipeline is at retrieval and generation. """
 
     @staticmethod
     def evaluate_item(
