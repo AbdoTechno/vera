@@ -108,15 +108,21 @@ class MedicalEmbedder:
             else:
                 formatted_texts = texts
 
-            embeddings = self.model.encode(
-                formatted_texts,
-                normalize_embeddings=self.normalize,
-                show_progress_bar=False,
-                convert_to_numpy=True
-            )
-            return embeddings.tolist()
+            import torch
+            with torch.no_grad():
+                embeddings = self.model.encode(
+                    formatted_texts,
+                    batch_size=32,
+                    normalize_embeddings=self.normalize,
+                    show_progress_bar=False,
+                    convert_to_numpy=True
+                )
+            result = embeddings.tolist()
+            del embeddings
+            return result
         else:
             return [[(hash(t + str(i)) % 1000) / 1000.0 for i in range(384)] for t in texts]
+
 
     def embed_query(self, query: str) -> List[float]:
         """Embeds a single search query."""
