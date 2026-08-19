@@ -20,15 +20,15 @@ class CitationFormatter:
 
             block = (
                 f"--- EVIDENCE CHUNK #{idx+1} ---\n"
-                f"Document: {doc_name}\n"
-                f"Section: {section}\n"
-                f"Page: {page_num}\n"
-                f"Retrieval Score: {score}\n"
-                f"Content:\n{content}\n"
+                f"Document: {ch['doc_name']}\n"
+                f"Section: {ch['section']}\n"
+                f"Page: {ch['page_number']}\n"
+                f"Retrieval Score: [ch{'score'}]\n"
+                f"Content:\n{ch['content']}\n"
             )
             formatted_blocks.append(block)
 
-        return "\n".join(formatted_blocks)
+            return "\n".join(formatted_blocks)
 
     @classmethod
     def extract_citations(cls, text: str) -> List[Dict[str, str]]:
