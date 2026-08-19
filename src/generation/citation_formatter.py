@@ -23,7 +23,7 @@ class CitationFormatter:
                 f"Document: {ch['doc_name']}\n"
                 f"Section: {ch['section']}\n"
                 f"Page: {ch['page_number']}\n"
-                f"Retrieval Score: [ch{'score'}]\n"
+                f"Retrieval Score: {score}\n"
                 f"Content:\n{ch['content']}\n"
             )
             formatted_blocks.append(block)
