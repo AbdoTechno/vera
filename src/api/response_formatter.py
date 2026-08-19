@@ -21,9 +21,10 @@ def format_clinical_response(
         if any(line.lower().startswith(p) for p in ["wait,", "let's", "thinking", "here is", "sure,", "source citations", "###", "---"]):
             continue
         
-        clean = re.sub(r'^(?:#+|\*\*|###)\s*(?:Executive\s+)?(?:Clinical\s+)?(?:Summary|Recommendations?|Direct Answer)[:\*#]*\s*', '', line, flags=re.IGNORECASE).strip()
+        clean = re.sub(r'^(?:#+|\*\*|###)\s*(?:Executive\s+)?(?:Clinical\s+)?(?:Summary|Recommendations?|Direct Answer|Answer|Supporting Evidence|Key Recommendations?)[:\*#]*\s*', '', line, flags=re.IGNORECASE).strip()
         clean = clean.lstrip("-*•0123456789. ").strip()
         clean = clean.replace("**:", ":").replace("**", "").strip()
+
         
         if len(clean) < 20:
             continue
