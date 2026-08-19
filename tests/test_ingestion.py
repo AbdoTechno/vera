@@ -2,7 +2,8 @@ import pytest
 from src.ingestion.chunker import MedicalChunker, Chunk
 
 def test_section_aware_chunker():
-    chunker = MedicalChunker(chunk_size=100, chunk_overlap=20, min_chunk_length=10)
+    chunker = MedicalChunker(chunk_size=100, chunk_overlap=20, min_chunk_length=5)
+
     
     mock_pages = [
         {
