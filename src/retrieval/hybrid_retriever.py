@@ -4,7 +4,7 @@ from src.retrieval.query_expansion import MedicalQueryExpander
 from src.utils.logger import logger
 
 class HybridRetriever:
-    """Combines BM25 Keyword Search with Dense Vector Search using Reciprocal Rank Fusion (RRF)."""
+    """Combines BM25 Keyword Search Retreival with SemanticSearch Dense Vector Search using Reciprocal Rank Fusion (RRF)."""
 
     def __init__(
         self,
@@ -26,7 +26,9 @@ class HybridRetriever:
             self._init_bm25()
 
     def _init_bm25(self):
-        """Initializes BM25 index on chunk contents."""
+        """Initializes BM25 index on chunk contents.
+        -  `BM25 (Best Matching 25)` is a Keyword Retriever Method that ranks documents based on term frequency 
+        and inverse document frequency similar to TF-IDF but optimized for ranking."""
         try:
             from rank_bm25 import BM25Okapi
             tokenized_corpus = [c["content"].lower().split() for c in self.chunks_corpus]
