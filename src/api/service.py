@@ -244,9 +244,12 @@ class VERAClinicalService:
             custom_query = f"{request.query} (Physician Context: Specialty: {request.doctor_context.specialty}, Focus: {request.doctor_context.notes})"
 
         # Determine verified user role
-        user_role = getattr(request, "user_role", None) or "Doctor"
-        if request.doctor_context and request.doctor_context.specialty and request.doctor_context.specialty != "General Medicine":
+        raw_role = getattr(request, "user_role", None) or "Doctor"
+        normalized_role = ClinicalGenerator._validate_role(raw_role)
+        user_role = raw_role
+        if request.doctor_context and request.doctor_context.specialty and request.doctor_context.specialty not in ["General Medicine", "Clinical Specialist", "General User"]:
             user_role = f"Doctor ({request.doctor_context.specialty})"
+
 
 
         gen_output = generator.generate_response(
@@ -296,7 +299,9 @@ class VERAClinicalService:
         )
 
         # 6. Build Structured Clinical Response
-        clinical_resp = format_clinical_response(raw_answer, sources_found, lang, confidence_val)
+        clinical_resp = format_clinical_response(raw_answer, sources_found, lang, confidence_val, user_role=normalized_role)
+
+
 
 
         domains = MedicalDomains(

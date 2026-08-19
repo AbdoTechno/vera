@@ -6,7 +6,8 @@ def format_clinical_response(
     raw_answer: str,
     sources: List[SourceFound],
     language: str,
-    confidence_val: float = 0.85
+    confidence_val: float = 0.85,
+    user_role: str = "doctor"
 ) -> ClinicalResponse:
     """Formats generated medical text into clean bullet recommendations and structured citations."""
     cleaned_text = raw_answer.strip()
@@ -37,16 +38,21 @@ def format_clinical_response(
         summary = recs.pop(0)
 
     if not summary:
-        summary = "Approved clinical guidelines outline evidence-based recommendations for this inquiry."
+        if user_role == "general_user":
+            summary = "Clinical guidelines provide important health information regarding this inquiry. Always discuss these findings with a licensed healthcare provider."
+        else:
+            summary = "Approved clinical guidelines outline evidence-based recommendations for this inquiry."
 
     if not recs:
-        # Split summary into distinct sentences if no bullets were provided
         sentences = [s.strip() for s in re.split(r'(?<=\.)\s+', summary) if len(s.strip()) > 30]
         if len(sentences) > 1:
             recs = sentences[1:]
             summary = sentences[0]
         else:
-            recs = [summary, "Consult the attached peer-reviewed literature for comprehensive protocol specifics."]
+            if user_role == "general_user":
+                recs = [summary, "Consult a licensed physician or specialist for personalized clinical evaluation and therapeutic guidance."]
+            else:
+                recs = [summary, "Consult the attached peer-reviewed literature for comprehensive protocol specifics."]
 
     # Citations
     citations: List[CitationItem] = []
@@ -59,7 +65,19 @@ def format_clinical_response(
             doclink=s.doclink
         ))
 
-    disclaimer = "VERA is an evidence-grounded research assistant and does not replace autonomous clinical diagnosis or medical practitioner judgment."
+    is_ar = language.lower().startswith("ar")
+    if user_role == "general_user":
+        disclaimer = (
+            "تنبيه طبي: هذه المعلومات مستخرجة من إرشادات طبية للتثقيف الصحي فقط ولا تغني عن استشارة الطبيب المختص لتشخيص حالتك وعلاجها."
+            if is_ar else
+            "Medical Notice: This evidence-based synthesis is for educational purposes only. Always consult a qualified medical professional for diagnosis and personalized treatment."
+        )
+    else:
+        disclaimer = (
+            "تنويه سريري: VERA هو مساعد بحثي مبني على الأدلة ولا يغني عن التقييم السريري المستقل للطبيب المعالج."
+            if is_ar else
+            "VERA is an evidence-grounded research assistant and does not replace autonomous clinical diagnosis or medical practitioner judgment."
+        )
 
     conf_pct = f"{int(confidence_val * 100)}%" if confidence_val <= 1.0 else f"{int(confidence_val)}%"
 
@@ -71,3 +89,4 @@ def format_clinical_response(
         confidence_score=confidence_val,
         confidence_percentage=conf_pct
     )
+

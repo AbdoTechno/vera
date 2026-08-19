@@ -1,30 +1,92 @@
 [
   {
     "id": "GOLD_001",
-    "query": "What are the approved therapies for Spinal Muscular Atrophy mentioned in the guidelines?",
+    "query": "What are the approved therapies for Spinal Muscular Atrophy mentioned in the clinical guidelines?",
+    "category": "pharmacology_treatment",
+    "difficulty": "Moderate",
     "relevant_doc_ids": ["DOC_003", "DOC_004"],
     "gold_citations": [
       "ClinPediatr_2023_SMA_Treatment_Best_Practices.pdf",
       "IJMS_2023_SMA_Past_Present_Future_Review.pdf"
     ],
-    "ground_truth_answer": "The three FDA-approved disease-modifying therapies for Spinal Muscular Atrophy (SMA) are: 1) Nusinersen (Spinraza), an intrathecal antisense oligonucleotide; 2) Onasemnogene abeparvovec (Zolgensma), an AAV9-based IV gene replacement therapy; and 3) Risdiplam (Evrysdi), an oral small-molecule SMN2 pre-mRNA splicing modifier."
+    "ground_truth_answer": "The three FDA-approved disease-modifying therapies for Spinal Muscular Atrophy (SMA) are: 1) Nusinersen (Spinraza), an intrathecal antisense oligonucleotide modifying SMN2 pre-mRNA splicing; 2) Onasemnogene abeparvovec (Zolgensma), an AAV9-vector intravenous gene replacement therapy delivering full-length SMN cDNA; and 3) Risdiplam (Evrysdi), an orally bioavailable small molecule that promotes SMN2 exon 7 inclusion."
   },
   {
     "id": "GOLD_002",
-    "query": "Why can SMN1 deletions be missed in short-read sequencing?",
+    "query": "Why are SMN1 deletions frequently missed in standard short-read exome and panel sequencing?",
+    "category": "genomics_diagnostics",
+    "difficulty": "Hard",
     "relevant_doc_ids": ["DOC_002"],
     "gold_citations": [
       "medRxiv_2024_SMA_Missed_Diagnoses_Sequencing.pdf"
     ],
-    "ground_truth_answer": "SMN1 and SMN2 share high sequence identity (differing by only a single nucleotide in exon 7). Short-read sequencing struggles to uniquely map reads in this repetitive and duplicated region, leading to missed diagnoses unless specialized caller tools or long-read sequencing are used."
+    "ground_truth_answer": "SMN1 and SMN2 share >99% sequence homology, differing by only a single critical nucleotide (c.840C>T) in exon 7. Standard short-read sequencing (100-150 bp) produces ambiguous multi-mapping reads across the highly duplicated 5q13 inverted segmental region, making copy-number determination impossible without specialized bioinformatics callers or long-read sequencing technologies."
   },
   {
     "id": "GOLD_003",
-    "query": "What are the advantages of long-read sequencing in detecting chromosomal rearrangements?",
+    "query": "How does long-read sequencing resolve complex balanced chromosomal translocations and structural breakpoints?",
+    "category": "cytogenetics_methodology",
+    "difficulty": "Hard",
     "relevant_doc_ids": ["DOC_001"],
     "gold_citations": [
       "GenomeResearch_2024_LongRead_Chromosomal_Rearrangements.pdf"
     ],
-    "ground_truth_answer": "Long-read sequencing (such as PacBio HiFi and Oxford Nanopore) spans repetitive regions, complex breakpoints, and structural variations that are invisible to short reads, allowing base-pair resolution of balanced translocations, inversions, and complex insertions."
+    "ground_truth_answer": "Long-read sequencing platforms (Pacific Biosciences HiFi and Oxford Nanopore) generate reads spanning 10-25+ kilobases that traverse repetitive elements, satellite DNA, and segmental duplications. This enables direct, contiguous phase assembly across translocation breakpoints with single-nucleotide resolution, uncovering cryptic disruptions that karyotyping and short-read WGS miss."
+  },
+  {
+    "id": "GOLD_004",
+    "query": "What laboratory pre-screening tests are mandatory prior to initiating onasemnogene abeparvovec (Zolgensma) gene therapy?",
+    "category": "safety_monitoring",
+    "difficulty": "Hard",
+    "relevant_doc_ids": ["DOC_003"],
+    "gold_citations": [
+      "ClinPediatr_2023_SMA_Treatment_Best_Practices.pdf"
+    ],
+    "ground_truth_answer": "Mandatory baseline tests include: 1) Baseline anti-AAV9 antibody titers (titer > 1:50 warrants retesting or precaution); 2) Liver function tests (AST, ALT, total bilirubin, prothrombin time); 3) Platelet count and coagulation profile; 4) Cardiac troponin-I levels; and 5) Renal function monitoring."
+  },
+  {
+    "id": "GOLD_005",
+    "query": "How does SMN2 copy number correlate with clinical phenotype and treatment eligibility in SMA?",
+    "category": "genetics_prognosis",
+    "difficulty": "Moderate",
+    "relevant_doc_ids": ["DOC_002", "DOC_004"],
+    "gold_citations": [
+      "IJMS_2023_SMA_Past_Present_Future_Review.pdf",
+      "medRxiv_2024_SMA_Missed_Diagnoses_Sequencing.pdf"
+    ],
+    "ground_truth_answer": "SMN2 copy number is the primary genetic modifier of SMA severity. Patients with 1-2 copies of SMN2 typically present with severe, early-onset SMA Type 1 (floppy infant syndrome, respiratory compromise). Patients with 3-4 copies generally exhibit milder phenotypes (SMA Type 2 or 3). Clinical consensus guidelines mandate immediate presymptomatic treatment in infants with 2 or 3 SMN2 copies."
+  },
+  {
+    "id": "GOLD_006",
+    "query": "What is the recommended intrathecal loading and maintenance schedule for Nusinersen?",
+    "category": "dosing_protocol",
+    "difficulty": "Hard",
+    "relevant_doc_ids": ["DOC_003"],
+    "gold_citations": [
+      "ClinPediatr_2023_SMA_Treatment_Best_Practices.pdf"
+    ],
+    "ground_truth_answer": "Nusinersen is administered at a recommended dose of 12 mg (5 mL) via lumbar puncture. The loading regimen consists of 4 doses: the first 3 doses given at 14-day intervals (Days 0, 14, and 28), and the 4th loading dose administered 30 days after the 3rd dose (Day 63). Subsequent maintenance doses of 12 mg are administered once every 4 months indefinitely."
+  },
+  {
+    "id": "GOLD_007",
+    "query": "What are the formal diagnostic thresholds for Stage 1 vs Stage 2 hypertension according to NICE guidelines?",
+    "category": "cardiology_guidelines",
+    "difficulty": "Moderate",
+    "relevant_doc_ids": ["DOC_005"],
+    "gold_citations": [
+      "NICE_Hypertension_in_adults_diagnosis_and_management.pdf"
+    ],
+    "ground_truth_answer": "According to NICE guidelines: Stage 1 hypertension is defined as clinic blood pressure >= 140/90 mmHg confirmed by subsequent ABPM or HBPM daytime average >= 135/85 mmHg. Stage 2 hypertension is clinic blood pressure >= 160/100 mmHg with subsequent ABPM/HBPM daytime average >= 150/95 mmHg. Severe hypertension (Stage 3) is clinic systolic >= 180 mmHg or clinic diastolic >= 120 mmHg."
+  },
+  {
+    "id": "GOLD_008",
+    "query": "What is the pharmacological mechanism of action of oral Risdiplam (Evrysdi)?",
+    "category": "pharmacology_molecular",
+    "difficulty": "Hard",
+    "relevant_doc_ids": ["DOC_004"],
+    "gold_citations": [
+      "IJMS_2023_SMA_Past_Present_Future_Review.pdf"
+    ],
+    "ground_truth_answer": "Risdiplam is an orally administered, centrally and peripherally distributed small molecule that selectively modifies the alternative splicing of SMN2 pre-mRNA. It binds to the 5' splice site of exon 7, displacing splice repressors and promoting exon 7 inclusion, resulting in the production of functional, full-length SMN protein throughout systemic tissues."
   }
 ]

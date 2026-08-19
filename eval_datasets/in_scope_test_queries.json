@@ -3,30 +3,56 @@
     "id": "IN_001",
     "query": "What are the recommended treatments for Spinal Muscular Atrophy according to best practice guidelines?",
     "category": "treatment",
+    "difficulty": "Moderate",
     "expected_doc_ids": ["DOC_003", "DOC_004"]
   },
   {
     "id": "IN_002",
-    "query": "What is the mechanism of action of Nusinersen (Spinraza)?",
+    "query": "What is the detailed molecular mechanism of action of Nusinersen (Spinraza)?",
     "category": "pharmacology",
+    "difficulty": "Hard",
     "expected_doc_ids": ["DOC_003", "DOC_004"]
   },
   {
     "id": "IN_003",
-    "query": "How is onasemnogene abeparvovec (Zolgensma) administered and what are its precautions?",
-    "category": "gene_therapy",
+    "query": "How is onasemnogene abeparvovec (Zolgensma) administered, what are its baseline laboratory requirements, and what are the steroid pre-medication protocols?",
+    "category": "gene_therapy_safety",
+    "difficulty": "Hard",
     "expected_doc_ids": ["DOC_003"]
   },
   {
     "id": "IN_004",
-    "query": "How does long-read sequencing resolve complex chromosomal rearrangements compared to short reads?",
+    "query": "How does long-read sequencing resolve complex chromosomal rearrangements, structural breakpoints, and repeat expansions compared to short reads?",
     "category": "genomics",
+    "difficulty": "Hard",
     "expected_doc_ids": ["DOC_001"]
   },
   {
     "id": "IN_005",
-    "query": "Why are diagnoses of SMA missed in short-read exome and panel sequencing datasets?",
+    "query": "Why are diagnoses of SMA frequently missed in short-read exome and gene panel sequencing datasets?",
     "category": "diagnostics",
+    "difficulty": "Hard",
     "expected_doc_ids": ["DOC_002"]
+  },
+  {
+    "id": "IN_006",
+    "query": "ما هي معايير تشخيص ارتفاع ضغط الدم والفرق بين المرحلة الأولى والمرحلة الثانية حسب إرشادات NICE؟",
+    "category": "cardiology_ar",
+    "difficulty": "Moderate",
+    "expected_doc_ids": ["DOC_005"]
+  },
+  {
+    "id": "IN_007",
+    "query": "ما هي الجرعات الموصى بها لدواء نوسينيرسين وجدول الجرعات التحميلية والاستمرارية؟",
+    "category": "dosing_ar",
+    "difficulty": "Hard",
+    "expected_doc_ids": ["DOC_003"]
+  },
+  {
+    "id": "IN_008",
+    "query": "What is the correlation between SMN2 copy number, clinical subtype, and prognosis in untreated versus treated SMA patients?",
+    "category": "genetics_prognosis",
+    "difficulty": "Hard",
+    "expected_doc_ids": ["DOC_002", "DOC_004"]
   }
 ]
