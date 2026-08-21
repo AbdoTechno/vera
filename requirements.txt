@@ -19,6 +19,7 @@ langchain-core>=0.2.0
 langchain-text-splitters>=0.2.0
 tiktoken>=0.7.0
 
+
 # Vector Databases & Embeddings
 chromadb>=0.5.0
 sentence-transformers>=3.0.0
